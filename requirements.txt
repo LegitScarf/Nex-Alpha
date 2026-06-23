@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pyjwt[crypto]
+requests
+cryptography
+pydantic
