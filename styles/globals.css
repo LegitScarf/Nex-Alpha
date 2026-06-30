@@ -52,7 +52,7 @@
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, transparent 60%, #030014 100%);
+  background: radial-gradient(ellipse 120% 100% at 50% 0%, transparent 85%, #030014 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -433,3 +433,32 @@
 ::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.35); border-radius: 3px; }
+
+/* ─── Clerk User Button Contrast Fixes ───────────────────────── */
+.cl-userButtonPopoverCard {
+  background-color: #0a0524 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.cl-userButtonPopoverActionButton {
+  transition: background-color 0.2s ease !important;
+}
+.cl-userButtonPopoverActionButton:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.cl-userButtonPopoverActionButtonText {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+.cl-userButtonPopoverActionButtonIcon,
+.cl-userButtonPopoverActionButtonIcon svg {
+  color: #a5b4fc !important;
+}
+
+.cl-userButtonPopoverFooter p,
+.cl-userButtonPopoverFooter a {
+  color: rgba(255, 255, 255, 0.4) !important;
+}

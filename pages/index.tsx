@@ -157,116 +157,6 @@ function OmegaWidget() {
   )
 }
 
-// ─── OptiTrade widget ─────────────────────────────────────────
-const STRIKES = [
-  { strike: "24,500 CE", premium: "₹142", action: "BUY",  conf: 91, active: true  },
-  { strike: "24,450 CE", premium: "₹178", action: "HOLD", conf: 74, active: false },
-  { strike: "24,400 PE", premium: "₹95",  action: "SKIP", conf: 38, active: false },
-]
-
-const SPARK = [32, 36, 31, 42, 38, 46, 41, 55, 50, 62, 58, 70]
-const SPARK_W = 140
-const SPARK_H = 36
-
-function sparkPath(pts: number[]): string {
-  const mx = Math.max(...pts)
-  const mn = Math.min(...pts)
-  const norm = (v: number) => SPARK_H - ((v - mn) / (mx - mn + 1)) * (SPARK_H - 4) - 2
-  return pts
-    .map((v, i) => `${i === 0 ? "M" : "L"}${(i / (pts.length - 1)) * SPARK_W},${norm(v)}`)
-    .join(" ")
-}
-
-function OptiTradeWidget() {
-  const [tick, setTick] = useState(0)
-
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => (t + 1) % SPARK.length), 1600)
-    return () => clearInterval(id)
-  }, [])
-
-  const livePrice = (24461 + Math.sin(tick * 0.9) * 18).toFixed(0)
-
-  return (
-    <div className="mt-6 space-y-3">
-      {/* Live index ticker */}
-      <div
-        className="flex items-center justify-between px-3 py-2 rounded-lg"
-        style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}
-      >
-        <span className="text-xs font-bold text-gray-300">NIFTY 50</span>
-        <div className="flex items-center gap-3">
-          <svg width={SPARK_W} height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}>
-            <defs>
-              <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#34d399" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path
-              d={sparkPath(SPARK) + ` L${SPARK_W},${SPARK_H} L0,${SPARK_H} Z`}
-              fill="url(#spark-fill)"
-            />
-            <path d={sparkPath(SPARK)} fill="none" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <div className="text-right">
-            <div className="text-sm font-bold text-white font-mono">{livePrice}</div>
-            <div className="text-xs text-emerald-400">+0.38%</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Strike recommendations */}
-      <div className="space-y-2">
-        {STRIKES.map((s, i) => (
-          <div
-            key={i}
-            className="strike-card flex items-center justify-between"
-            style={
-              !s.active
-                ? { background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.06)", opacity: 0.6 }
-                : undefined
-            }
-          >
-            <div className="flex items-center gap-2">
-              {s.active && <span className="strike-badge">● {s.action}</span>}
-              {!s.active && (
-                <span
-                  className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{
-                    background: s.action === "HOLD" ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.06)",
-                    border: `1px solid ${s.action === "HOLD" ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.1)"}`,
-                    color: s.action === "HOLD" ? "#fbbf24" : "#94a3b8",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {s.action}
-                </span>
-              )}
-              <span className="text-sm font-bold text-white font-mono">{s.strike}</span>
-            </div>
-            <div className="flex items-center gap-3 text-right">
-              <span className="text-xs text-gray-400 font-mono">{s.premium}</span>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 mb-0.5">Conf.</div>
-                <div
-                  className="text-xs font-bold font-mono"
-                  style={{ color: s.conf > 80 ? "#34d399" : s.conf > 60 ? "#fbbf24" : "#f87171" }}
-                >
-                  {s.conf}%
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p className="text-xs text-gray-600 pt-1">
-        ⚠ Illustrative only · Not financial advice
-      </p>
-    </div>
-  )
-}
 
 // ─── Main page component ──────────────────────────────────────
 export default function Home() {
@@ -276,7 +166,7 @@ export default function Home() {
   const [loadingProduct, setLoadingProduct] = useState<string | null>(null)
   const [errorMessage,   setErrorMessage]   = useState<string | null>(null)
 
-  const handleLaunch = async (productId: "omega" | "optitrade") => {
+  const handleLaunch = async (productId: "omega") => {
     if (!isSignedIn) {
       window.location.href = "/sign-in"
       return
@@ -517,7 +407,7 @@ export default function Home() {
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-1 lg:grid-cols-2 gap-7"
+            className="max-w-2xl mx-auto"
             initial="hidden"
             animate={productsInView ? "visible" : "hidden"}
             variants={stagger}
@@ -590,73 +480,6 @@ export default function Home() {
               </button>
             </motion.div>
 
-            {/* ── OptiTrade card ───────────────────────────────── */}
-            <motion.div variants={fadeUp} className="card-blur rounded-2xl p-7 flex flex-col relative overflow-hidden group">
-              {/* corner glow */}
-              <div
-                className="absolute -top-12 -right-12 w-48 h-48 rounded-full transition-all duration-500"
-                style={{ background: "radial-gradient(circle, rgba(236,72,153,0.18), transparent 70%)", filter: "blur(30px)" }}
-              />
-              <div
-                className="absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ background: "radial-gradient(circle, rgba(236,72,153,0.35), transparent 70%)", filter: "blur(30px)" }}
-              />
-
-              {/* Header */}
-              <div className="flex items-start justify-between mb-5 relative">
-                <div>
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: "rgba(236,72,153,0.12)", border: "1px solid rgba(236,72,153,0.22)" }}
-                  >
-                    <TrendingUp className="w-5 h-5 text-pink-400" />
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-2xl font-black text-white tracking-tight">OptiTrade</h3>
-                    <span className="tag-accent">Trading Agent</span>
-                  </div>
-                  <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-                    Multi-agent options assistant for Nifty 50. Strike recommendations calibrated
-                    to your budget, timeline & expiry targets.
-                  </p>
-                </div>
-              </div>
-
-              {/* Feature list */}
-              <ul className="space-y-2.5 mb-5">
-                {[
-                  "Multi-agent correlation validation",
-                  "Dynamic strike price optimisation",
-                  "Budget & risk-reward parameter checks",
-                ].map((f, i) => (
-                  <li key={i} className="feature-item">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Interactive demo */}
-              <OptiTradeWidget />
-
-              {/* Launch */}
-              <button
-                onClick={() => handleLaunch("optitrade")}
-                disabled={loadingProduct !== null}
-                className="btn-launch-trade mt-6"
-              >
-                {loadingProduct === "optitrade" ? (
-                  <><div className="spinner" /> Launching…</>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Launch OptiTrade
-                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </motion.div>
-
           </motion.div>
         </section>
 
@@ -697,7 +520,7 @@ export default function Home() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Explorer</p>
                   <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-5xl font-black text-white">$0</span>
+                    <span className="text-5xl font-black text-white">₹0</span>
                     <span className="text-gray-500 text-sm">/&nbsp;month</span>
                   </div>
                   <p className="text-sm text-gray-400 mb-7 leading-relaxed">
@@ -706,7 +529,7 @@ export default function Home() {
                   <ul className="space-y-3">
                     {[
                       "5 queries / day on Omega",
-                      "Basic Nifty 50 recommendations",
+                      "Access to standard visual charts",
                       "Standard execution latency",
                     ].map((f, i) => (
                       <li key={i} className="feature-item">
@@ -735,7 +558,7 @@ export default function Home() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-indigo-300 mb-1">Alpha Pro</p>
                   <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-5xl font-black text-white">$29</span>
+                    <span className="text-5xl font-black text-white">₹499</span>
                     <span className="text-gray-500 text-sm">/&nbsp;month</span>
                   </div>
                   <p className="text-sm text-gray-400 mb-7 leading-relaxed">
@@ -743,9 +566,9 @@ export default function Home() {
                   </p>
                   <ul className="space-y-3">
                     {[
-                      "Unlimited multi-modal queries on Omega",
-                      "Advanced Nifty 50 strike optimisation",
+                      "Unlimited queries on Omega",
                       "Priority API execution speed",
+                      "Advanced analytical charting options",
                       "Exclusive access to future tools",
                     ].map((f, i) => (
                       <li key={i} className="feature-item">
