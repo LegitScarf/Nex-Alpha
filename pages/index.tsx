@@ -205,8 +205,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NexAlpha — AI Analytics & Trading Suite</title>
-        <meta name="description" content="Enterprise-grade AI products: natural-language analytics and multi-agent options trading for Nifty 50." />
+        <title>NexAlpha — Natural Language AI Data Analytics</title>
+        <meta name="description" content="Enterprise-grade AI products: natural-language analytics and multi-agent data orchestration." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -326,7 +326,7 @@ export default function Home() {
               className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-11 leading-relaxed font-light"
             >
               NexAlpha ships premium multi-agent architectures that replace coding friction with
-              natural language, and transform options trading into a data-driven science.
+              natural language, and transform complex databases into a data-driven science.
             </motion.p>
 
             {/* CTAs */}
@@ -402,7 +402,7 @@ export default function Home() {
             </motion.h2>
             <motion.p variants={fadeUp} className="text-gray-400 max-w-xl mx-auto text-base">
               Decoupled intelligent frameworks — built to automate analysis and
-              sharpen every trading decision.
+              sharpen every business decision.
             </motion.p>
           </motion.div>
 
@@ -562,7 +562,7 @@ export default function Home() {
                     <span className="text-gray-500 text-sm">/&nbsp;month</span>
                   </div>
                   <p className="text-sm text-gray-400 mb-7 leading-relaxed">
-                    For active trading researchers and high-frequency analytical workflows.
+                    For active business researchers and high-frequency analytical workflows.
                   </p>
                   <ul className="space-y-3">
                     {[
