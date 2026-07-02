@@ -558,8 +558,8 @@ export default function Home() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-indigo-300 mb-1">Alpha Pro</p>
                   <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-5xl font-black text-white">₹499</span>
-                    <span className="text-gray-500 text-sm">/&nbsp;month</span>
+                    <span className="text-5xl font-black text-white">₹299/-</span>
+                    <span className="text-gray-500 text-sm">/&nbsp;day</span>
                   </div>
                   <p className="text-sm text-gray-400 mb-7 leading-relaxed">
                     For active business researchers and high-frequency analytical workflows.
