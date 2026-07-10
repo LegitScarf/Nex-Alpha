@@ -1,0 +1,33 @@
+
+/app/frontend/src/App.css
+
+
+
+Action: file_editor create /app/frontend/src/App.css --file-text ".App {
+    min-height: 100vh;
+    background: #ffffff;
+    color: #0a0a0a;
+    scroll-behavior: smooth;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Reveal helper */
+.reveal-mask {
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        black 0%,
+        black 80%,
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        black 0%,
+        black 80%,
+        transparent 100%
+    );
+}
+"
+Observation: Overwrite successful: /app/frontend/src/App.css

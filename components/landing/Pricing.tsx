@@ -1,0 +1,233 @@
+import { motion } from "framer-motion";
+import { Check, ArrowUpRight } from "lucide-react";
+import { TID } from "@/constants/testIds";
+import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
+
+interface PricingProps {
+  onLaunch: (productId: "omega") => void;
+  loading: boolean;
+}
+
+interface TierItem {
+  name: string;
+  price: string;
+  unit: string;
+  tagline: string;
+  features: string[];
+  cta: string;
+  testid: string;
+  popular: boolean;
+}
+
+const tiers: TierItem[] = [
+  {
+    name: "Explorer",
+    price: "₹0",
+    unit: "/ month",
+    tagline:
+      "For individuals starting out with AI analytics and basic multi-agent evaluations.",
+    features: [
+      "5 queries / day on Omega",
+      "Access to standard visual charts",
+      "Standard execution latency",
+      "Community support",
+    ],
+    cta: "Current Tier",
+    testid: TID.pricingExplorerCta,
+    popular: false,
+  },
+  {
+    name: "Alpha Pro",
+    price: "₹299",
+    unit: "/ day",
+    tagline:
+      "For active business researchers and high-frequency analytical workflows.",
+    features: [
+      "Unlimited queries on Omega",
+      "Priority API execution speed",
+      "Advanced analytical charting options",
+      "Exclusive access to future tools",
+    ],
+    cta: "Upgrade workspace",
+    testid: TID.pricingAlphaProCta,
+    popular: true,
+  },
+];
+
+export default function Pricing({ onLaunch, loading }: PricingProps) {
+  const { isSignedIn } = useAuth();
+
+  const handleCtaClick = (tier: TierItem) => {
+    if (!isSignedIn) {
+      window.location.href = "/sign-in";
+      return;
+    }
+    // Launch/upgrade action
+    onLaunch("omega");
+  };
+
+  return (
+    <section
+      id="pricing"
+      data-testid={TID.pricingSection}
+      className="relative py-24 md:py-32"
+    >
+      <div className="max-w-6xl mx-auto px-6 md:px-8">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto">
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500"
+          >
+            [ 02 ] · Pricing
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="mt-4 font-display font-black tracking-tighter text-[#0A0A0A] text-4xl md:text-5xl lg:text-6xl leading-[0.95]"
+          >
+            Pick your <span className="italic text-[#0047FF]">tempo.</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="mt-6 text-lg text-zinc-600 leading-relaxed"
+          >
+            Simple, honest, no seat-based nonsense. Upgrade for a day, stay for a
+            year.
+          </motion.p>
+        </div>
+
+        {/* Cards */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-stretch">
+          {tiers.map((t, i) => (
+            <motion.div
+              key={t.name}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{
+                duration: 0.7,
+                ease: [0.19, 1, 0.22, 1],
+                delay: i * 0.08,
+              }}
+              className={`relative rounded-3xl p-8 md:p-10 flex flex-col justify-between h-full ${
+                t.popular
+                  ? "tracing-beam bg-[#0A0A0A] text-white md:scale-[1.03]"
+                  : "bg-white border border-black/5 text-[#0A0A0A]"
+              }`}
+            >
+              {t.popular && (
+                <span className="absolute -top-3 left-8 rounded-full bg-[#DFFF00] px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-[#0A0A0A]">
+                  ★ Most Popular
+                </span>
+              )}
+
+              <div>
+                {/* Tier name */}
+                <div className="flex items-baseline justify-between text-left">
+                  <h3 className="font-display font-bold tracking-tight text-2xl md:text-3xl">
+                    {t.name}
+                  </h3>
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-widest ${
+                      t.popular ? "text-white/40" : "text-zinc-400"
+                    }`}
+                  >
+                    0{i + 1}
+                  </span>
+                </div>
+
+                {/* Price */}
+                <div className="mt-6 flex items-baseline gap-2 text-left">
+                  <span className="font-display font-black text-5xl md:text-6xl tracking-tighter">
+                    {t.price}
+                  </span>
+                  <span
+                    className={`text-sm ${
+                      t.popular ? "text-white/60" : "text-zinc-500"
+                    }`}
+                  >
+                    {t.unit}
+                  </span>
+                </div>
+
+                <p
+                  className={`mt-4 text-[15px] leading-relaxed text-left ${
+                    t.popular ? "text-white/70" : "text-zinc-600"
+                  }`}
+                >
+                  {t.tagline}
+                </p>
+
+                {/* Divider */}
+                <div
+                  className={`my-7 h-px w-full ${
+                    t.popular ? "bg-white/10" : "bg-black/5"
+                  }`}
+                />
+
+                {/* Features */}
+                <ul className="space-y-3 text-left">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex items-start gap-3 text-[15px]">
+                      <span
+                        className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full shrink-0 ${
+                          t.popular
+                            ? "bg-[#DFFF00] text-[#0A0A0A]"
+                            : "bg-[#0047FF] text-white"
+                        }`}
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                      <span
+                        className={t.popular ? "text-white/90" : "text-zinc-700"}
+                      >
+                        {f}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* CTA */}
+              <div>
+                <button
+                  data-testid={t.testid}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleCtaClick(t)}
+                  className={`group mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 font-medium text-sm md:text-base transition-all duration-300 disabled:opacity-50 ${
+                    t.popular
+                      ? "bg-[#0047FF] text-white hover:bg-[#DFFF00] hover:text-[#0A0A0A]"
+                      : "bg-[#0A0A0A] text-white hover:bg-[#0047FF]"
+                  }`}
+                >
+                  {t.popular && loading ? "Launching..." : t.cta}
+                  <ArrowUpRight
+                    size={16}
+                    strokeWidth={2.2}
+                    className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                  />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Footnote */}
+        <p className="mt-10 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">
+          No credit card required · Cancel any time · GST included
+        </p>
+      </div>
+    </section>
+  );
+}

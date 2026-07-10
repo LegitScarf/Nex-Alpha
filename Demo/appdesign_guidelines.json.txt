@@ -1,0 +1,187 @@
+/app/design_guidelines.json
+
+
+Action: file_editor view /app/design_guidelines.json
+Observation: [Showing lines 1-181 of 181 total] /app/design_guidelines.json:
+1|{
+2|  "project_name": "Omega Landing Page Redesign",
+3|  "domain": "AI Analytics / SaaS",
+4|  "theme": "Light",
+5|  "archetype": "Archetype 4: Swiss & High-Contrast (Adapted for 'Playful Tech')",
+6|  "design_philosophy": "Clarity + Immersion. Using a stark white background with a technical grid, layered with high-end glassmorphism, animated widgets, and vibrant, playful accents. Avoids generic SaaS templates by utilizing asymmetrical bento layouts, oversized kinetic typography, and real-time interactive product demonstrations.",
+7|  "typography": {
+8|    "strategy": "The 'Editorial Future' paired with 'Tech Utility'.",
+9|    "primary_font_family": "Cabinet Grotesk",
+10|    "secondary_font_family": "Satoshi",
+11|    "mono_font_family": "JetBrains Mono",
+12|    "scales": {
+13|      "h1": "text-5xl md:text-6xl lg:text-7xl tracking-tighter leading-none font-black",
+14|      "h2": "text-3xl md:text-4xl lg:text-5xl tracking-tight leading-tight font-bold",
+15|      "h3": "text-xl md:text-2xl tracking-tight leading-snug font-semibold",
+16|      "h4": "text-lg md:text-xl font-medium",
+17|      "body_large": "text-lg md:text-xl leading-relaxed text-zinc-600",
+18|      "body_base": "text-base leading-relaxed text-zinc-600",
+19|      "labels": "text-xs md:text-sm uppercase tracking-[0.2em] font-mono font-semibold"
+20|    },
+21|    "rules": [
+22|      "Never use Inter or Roboto.",
+23|      "Headings must use tight letter spacing (tracking-tighter).",
+24|      "Overlines/Labels must be Uppercase + Wide Spacing (tracking-[0.2em])."
+25|    ]
+26|  },
+27|  "color_palette": {
+28|    "backgrounds": {
+29|      "primary": "#FFFFFF",
+30|      "secondary": "#FAFAFA",
+31|      "grid_lines": "rgba(0, 0, 0, 0.04)"
+32|    },
+33|    "text": {
+34|      "primary": "#0A0A0A",
+35|      "secondary": "#52525B",
+36|      "tertiary": "#A1A1AA"
+37|    },
+38|    "brand_accents": {
+39|      "primary_cta": "#0047FF",
+40|      "playful_orange": "#FF5E00",
+41|      "chart_lime": "#DFFF00",
+42|      "chart_cyan": "#00F0FF"
+43|    },
+44|    "surfaces": {
+45|      "glass": "bg-white/70 backdrop-blur-xl backdrop-saturate-150 border border-black/5",
+46|      "solid_dark": "bg-[#0A0A0A] text-white border border-white/10"
+47|    }
+48|  },
+49|  "spacing_and_layout": {
+50|    "philosophy": "Generous Spacing + 'Control Room' Grids. Every container has room to breathe, but data grids are tightly packed.",
+51|    "section_padding": "py-24 md:py-32 lg:py-40",
+52|    "container": "max-w-7xl mx-auto px-6 md:px-8",
+53|    "bento_grid": "grid grid-cols-1 md:grid-cols-4 gap-6",
+54|    "border_radius": "rounded-3xl for main containers, rounded-xl for inner elements, rounded-full for buttons"
+55|  },
+56|  "micro_themes": [
+57|    {
+58|      "name": "Optical Clarity Glassmorphism",
+59|      "usage": "Interactive Omega Widget, Sticky Nav",
+60|      "classes": "bg-white/70 backdrop-blur-2xl backdrop-saturate-150 border border-black/5 shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
+61|    },
+62|    {
+63|      "name": "Grid Borders",
+64|      "usage": "Products Bento Box Section",
+65|      "classes": "bg-zinc-50 border-collapse border border-black/5"
+66|    },
+67|    {
+68|      "name": "The Tracing Beam",
+69|      "usage": "Alpha Pro Pricing Card",
+70|      "description": "An animated glowing border around the popular tier card to draw attention."
+71|    }
+72|  ],
+73|  "motion_and_interactions": {
+74|    "hero_omega_symbol": {
+75|      "animation": "Continuous slow rotation + pulsing glow.",
+76|      "framer_motion": "{ animate: { rotate: 360 }, transition: { duration: 20, repeat: Infinity, ease: 'linear' } }"
+77|    },
+78|    "interactive_widget": {
+79|      "sequence": [
+80|        "1. Typing effect ('Analyze Q3 sales data...') using Framer Motion staggerChildren.",
+81|        "2. Brief loading state with a spinning Omega icon.",
+82|        "3. Staggered vertical bar chart reveal (bars growing from height: 0 to value)."
+83|      ]
+84|    },
+85|    "scroll_reveals": {
+86|      "framer_motion": "initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }}"
+87|    },
+88|    "hover_states": {
+89|      "buttons": "hover:scale-105 transition-transform duration-200 hover:shadow-xl",
+90|      "bento_cards": "hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300"
+91|    }
+92|  },
+93|  "components": {
+94|    "header": {
+95|      "layout": "Fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-black/5",
+96|      "elements": "Logo (NexAlpha), 3-5 Nav Links (text-sm font-medium), 'Launch Omega' CTA button (bg-black text-white rounded-full px-6 py-2)"
+97|    },
+98|    "hero_section": {
+99|      "layout": "Min-h-[90vh] flex flex-col items-center justify-center relative overflow-hidden",
+100|      "background": "CSS linear-gradient grid pattern (1px lines every 40px, rgba(0,0,0,0.05))",
+101|      "content": "Badge ('Introducing Omega Analytics'), Oversized H1 ('Talk to your data.'), Subtitle ('The playful, powerful AI analyst that turns raw CSVs into real-time visual insights.'), CTA ('Launch Omega' - Vibrant Orange bg)",
+102|      "visual": "The Interactive Widget floating in the center-bottom, overlapping the grid."
+103|    },
+104|    "interactive_omega_widget": {
+105|      "layout": "w-full max-w-2xl mx-auto rounded-3xl p-6 md:p-8 Glassmorphism container.",
+106|      "header": "Mac-style dots + 'Omega AI' mono label.",
+107|      "body": "Typing prompt simulating a user query. Followed by a dynamic Recharts/Framer bar chart showing 'Q3 Sales' with #FF5E00 and #0047FF bars."
+108|    },
+109|    "products_section": {
+110|      "layout": "Bento Grid (Control Room Mode). grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+111|      "items": [
+112|        {
+113|          "title": "Natural Language Query",
+114|          "span": "col-span-1 md:col-span-2 row-span-2",
+115|          "visual": "Chat UI mock"
+116|        },
+117|        {
+118|          "title": "1-Click Imports",
+119|          "span": "col-span-1 md:col-span-2 row-span-1",
+120|          "visual": "CSV/Excel/SQL badges"
+121|        },
+122|        {
+123|          "title": "Real-time Charts",
+124|          "span": "col-span-1 md:col-span-2 row-span-1",
+125|          "visual": "Mini sparkline chart"
+126|        }
+127|      ]
+128|    },
+129|    "pricing_section": {
+130|      "layout": "grid grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto gap-8",
+131|      "cards": [
+132|        {
+133|          "tier": "Explorer",
+134|          "price": "Free",
+135|          "style": "bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm",
+136|          "cta": "Get Started"
+137|        },
+138|        {
+139|          "tier": "Alpha Pro",
+140|          "badge": "Popular",
+141|          "price": "₹299/day",
+142|          "style": "bg-zinc-950 text-white rounded-3xl p-8 relative overflow-hidden shadow-2xl scale-105",
+143|          "cta": "Launch Alpha Pro",
+144|          "cta_style": "bg-[#0047FF] text-white w-full hover:bg-blue-600"
+145|        }
+146|      ]
+147|    },
+148|    "footer": {
+149|      "layout": "py-20 border-t border-zinc-100 bg-white",
+150|      "content": "Huge 'NexAlpha' watermark logo. Simple links. Black text."
+151|    }
+152|  },
+153|  "assets": {
+154|    "icons": {
+155|      "library": "lucide-react",
+156|      "usage": "Use stroke-width 1.5 for a technical, crisp look."
+157|    },
+158|    "images": [
+159|      {
+160|        "category": "background_texture",
+161|        "url": "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMHdoaXRlJTIwdGVjaCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzgyOTkzNjQxfDA&ixlib=rb-4.1.0&q=85",
+162|        "description": "Subtle white tech wavy lines, can be used for section transitions."
+163|      },
+164|      {
+165|        "category": "product_abstract",
+166|        "url": "https://images.unsplash.com/photo-1666875753105-c63a6f3bdc86?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwxfHxkYXRhJTIwYW5hbHl0aWNzJTIwY2hhcnQlMjBhYnN0cmFjdHxlbnwwfHx8fDE3ODI5OTM2NDF8MA&ixlib=rb-4.1.0&q=85",
+167|        "description": "3D data analytics abstract to be placed in the Products Bento Box."
+168|      }
+169|    ]
+170|  },
+171|  "accessibility_and_testing": {
+172|    "contrast": "Ensure text meets APCA standards. Black on white, white on #0047FF, white on #0A0A0A all pass.",
+173|    "testing_ids": [
+174|      "data-testid='hero-cta-button'",
+175|      "data-testid='nav-launch-button'",
+176|      "data-testid='pricing-explorer-cta'",
+177|      "data-testid='pricing-alpha-pro-cta'",
+178|      "data-testid='interactive-widget-container'"
+179|    ]
+180|  }
+181|}
+[End of file]

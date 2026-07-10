@@ -152,9 +152,11 @@ def verify_clerk_token(authorization: str = Header(None)):
         )
 
 # Database / Product mapping
+OMEGA_APP_URL = os.getenv("OMEGA_APP_URL", "http://localhost:3001")
 PRODUCT_URLS = {
-    "omega": "https://omega-v2-nexalpha.streamlit.app/",
+    "omega": OMEGA_APP_URL,
 }
+
 
 @app.get("/api")
 def root():

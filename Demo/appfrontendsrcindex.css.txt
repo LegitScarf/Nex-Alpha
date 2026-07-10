@@ -1,12 +1,14 @@
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,900,700&f[]=satoshi@300,400,500,700,900&f[]=jetbrains-mono@300,400,500,700&display=swap');
-@tailwind base;
+/app/frontend/src/index.css
+
+
+Action: file_editor create /app/frontend/src/index.css --file-text "@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-    --font-display: "Cabinet Grotesk", "Satoshi", ui-sans-serif, system-ui, sans-serif;
-    --font-body: "Satoshi", "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --font-display: \"Cabinet Grotesk\", \"Satoshi\", ui-sans-serif, system-ui, sans-serif;
+    --font-body: \"Satoshi\", \"Cabinet Grotesk\", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: \"JetBrains Mono\", ui-monospace, \"SF Mono\", Menlo, monospace;
 
     --bg-primary: #ffffff;
     --bg-secondary: #fafafa;
@@ -30,7 +32,6 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    scroll-behavior: smooth;
 }
 
 body {
@@ -47,6 +48,7 @@ body {
     color: #dfff00;
 }
 
+/* Custom cursor accent for interactive areas */
 button,
 a {
     cursor: pointer;
@@ -55,7 +57,7 @@ a {
 /* Typography helpers */
 .font-display {
     font-family: var(--font-display);
-    font-feature-settings: "ss01", "ss02";
+    font-feature-settings: \"ss01\", \"ss02\";
 }
 .font-body {
     font-family: var(--font-body);
@@ -160,7 +162,7 @@ a {
     isolation: isolate;
 }
 .tracing-beam::before {
-    content: "";
+    content: \"\";
     position: absolute;
     inset: -1.5px;
     border-radius: inherit;
@@ -212,7 +214,7 @@ a {
     }
 }
 
-/* Base tailwind elements */
+/* Legacy shadcn tokens, kept for any imported ui/* components */
 @layer base {
     :root {
         --background: 0 0% 100%;
@@ -237,3 +239,11 @@ a {
         --radius: 0.5rem;
     }
 }
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+}
+"
+Observation: Overwrite successful: /app/frontend/src/index.css

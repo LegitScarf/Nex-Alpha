@@ -1,0 +1,222 @@
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import { RotateCw, Sparkles, TrendingUp } from "lucide-react";
+import { TID } from "@/constants/testIds";
+
+const QUERY_TEXT = "analyze Q3 sales trends across regions";
+
+interface BarItem {
+  label: string;
+  h: number;
+  color: string;
+}
+
+const BAR_DATA: BarItem[] = [
+  { label: "Jul", h: 46, color: "#0047FF" },
+  { label: "Aug", h: 62, color: "#0047FF" },
+  { label: "Sep", h: 92, color: "#FF5E00" },
+  { label: "Q3", h: 100, color: "#0A0A0A" },
+  { label: "Q2", h: 58, color: "#0047FF" },
+  { label: "Q1", h: 41, color: "#0047FF" },
+];
+
+export default function OmegaWidget() {
+  const [phase, setPhase] = useState<"typing" | "loading" | "chart">("typing");
+  const [typed, setTyped] = useState("");
+  const [bars, setBars] = useState<number[]>([]);
+  const [runKey, setRunKey] = useState(0);
+  const idxRef = useRef(0);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(containerRef, { once: false, margin: "-80px" });
+
+  // Reset when in-view or on manual restart
+  useEffect(() => {
+    if (!inView) return;
+    setPhase("typing");
+    setTyped("");
+    setBars([]);
+    idxRef.current = 0;
+  }, [inView, runKey]);
+
+  // Typing effect
+  useEffect(() => {
+    if (phase !== "typing") return;
+    if (idxRef.current >= QUERY_TEXT.length) {
+      const t = setTimeout(() => setPhase("loading"), 380);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setTyped(QUERY_TEXT.slice(0, idxRef.current + 1));
+      idxRef.current += 1;
+    }, 42);
+    return () => clearTimeout(t);
+  }, [phase, typed]);
+
+  // Loading → chart
+  useEffect(() => {
+    if (phase !== "loading") return;
+    const t = setTimeout(() => setPhase("chart"), 950);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // Cascade bars
+  useEffect(() => {
+    if (phase !== "chart") return;
+    BAR_DATA.forEach((_, i) => {
+      setTimeout(() => setBars((prev) => [...prev, i]), i * 110);
+    });
+  }, [phase]);
+
+  const restart = () => setRunKey((k) => k + 1);
+
+  return (
+    <motion.div
+      ref={containerRef}
+      data-testid={TID.interactiveWidget}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
+      className="glass relative w-full max-w-3xl mx-auto rounded-3xl p-5 md:p-6 overflow-hidden text-left"
+    >
+      {/* subtle inner grid */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.5]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+
+      {/* Header: mac dots + label */}
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
+          <span className="ml-3 font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+            omega · data-shell
+          </span>
+        </div>
+        <button
+          onClick={restart}
+          data-testid={TID.widgetRestartButton}
+          className="group inline-flex items-center gap-1.5 rounded-full border border-black/10 px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider text-zinc-600 hover:text-black hover:border-black transition-colors"
+          aria-label="Replay demo"
+        >
+          <RotateCw
+            size={12}
+            strokeWidth={2}
+            className="transition-transform duration-500 group-hover:rotate-180"
+          />
+          replay
+        </button>
+      </div>
+
+      {/* Prompt line */}
+      <div className="relative mt-5 font-mono text-sm md:text-base text-[#0A0A0A]">
+        <span className="text-[#0047FF]">❯</span>{" "}
+        <span>{typed}</span>
+        {phase === "typing" && (
+          <span className="inline-block w-[8px] h-[16px] md:h-[18px] bg-[#0A0A0A] align-middle ml-0.5 animate-caret" />
+        )}
+      </div>
+
+      {/* Status */}
+      <AnimatePresence mode="wait">
+        {(phase === "loading" || phase === "chart") && (
+          <motion.div
+            key={phase}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="relative mt-3 flex items-center gap-2 font-mono text-xs md:text-[13px]"
+          >
+            {phase === "loading" ? (
+              <>
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+                  className="inline-block text-[#FF5E00] font-black"
+                >
+                  Ω
+                </motion.span>
+                <span className="text-zinc-500">
+                  Running multi-modal analysis…
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} strokeWidth={2} className="text-[#0047FF]" />
+                <span className="text-zinc-700">
+                  Analysis complete — 6 segments · confidence 98.4%
+                </span>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Chart */}
+      {phase === "chart" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="relative mt-6 rounded-2xl border border-black/5 bg-white/60 p-4"
+        >
+          <div className="flex items-end justify-between h-40 gap-3 md:gap-4">
+            {BAR_DATA.map((b, i) => {
+              const visible = bars.includes(i);
+              return (
+                <div key={b.label} className="flex-1 flex flex-col items-center gap-2">
+                  <div className="relative w-full h-32 flex items-end">
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{
+                        height: visible ? `${b.h}%` : 0,
+                        opacity: visible ? 1 : 0,
+                      }}
+                      transition={{
+                        duration: 0.7,
+                        ease: [0.19, 1, 0.22, 1],
+                      }}
+                      style={{ background: b.color }}
+                      className="w-full rounded-t-md relative"
+                    >
+                      {b.color === "#FF5E00" && visible && (
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 font-mono text-[10px] font-semibold text-[#FF5E00] whitespace-nowrap">
+                          peak
+                        </span>
+                      )}
+                    </motion.div>
+                  </div>
+                  <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-wider text-zinc-500">
+                    {b.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer stats */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-black/5 pt-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={14} strokeWidth={2} className="text-[#0047FF]" />
+              <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
+                <span className="text-[#0A0A0A] font-semibold">↑ 23.4% QoQ</span>{" "}
+                · trend: accelerating
+              </span>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+              generated in 0.42s
+            </span>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}

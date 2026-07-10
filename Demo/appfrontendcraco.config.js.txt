@@ -1,0 +1,159 @@
+/app/frontend/craco.config.js
+
+
+
+Action: file_editor view /app/frontend/craco.config.js
+Observation: [Showing lines 1-152 of 152 total] /app/frontend/craco.config.js:
+1|// craco.config.js
+2|const path = require("path");
+3|require("dotenv").config();
+4|
+5|// Check if we're in development/preview mode (not production build)
+6|// Craco sets NODE_ENV=development for start, NODE_ENV=production for build
+7|const isDevServer = process.env.NODE_ENV !== "production";
+8|
+9|// Environment variable overrides
+10|const config = {
+11|  enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
+12|};
+13|
+14|function makeDevServerV5Compatible(devServerConfig) {
+15|  const {
+16|    https,
+17|    onAfterSetupMiddleware,
+18|    onBeforeSetupMiddleware,
+19|    onListening,
+20|    setupMiddlewares,
+21|    ...compatibleConfig
+22|  } = devServerConfig;
+23|
+24|  compatibleConfig.server =
+25|    typeof https === "object"
+26|      ? { type: "https", options: https }
+27|      : https
+28|        ? "https"
+29|        : "http";
+30|  compatibleConfig.headers = {
+31|    ...compatibleConfig.headers,
+32|    "Cross-Origin-Resource-Policy": "same-origin",
+33|  };
+34|
+35|  if (onBeforeSetupMiddleware || setupMiddlewares) {
+36|    compatibleConfig.setupMiddlewares = (middlewares, devServer) => {
+37|      if (onBeforeSetupMiddleware) {
+38|        onBeforeSetupMiddleware(devServer);
+39|      }
+40|
+41|      return setupMiddlewares
+42|        ? setupMiddlewares(middlewares, devServer)
+43|        : middlewares;
+44|    };
+45|  }
+46|
+47|  compatibleConfig.onListening = (devServer) => {
+48|    devServer.close ??= (callback) => devServer.stopCallback(callback);
+49|
+50|    if (onListening) {
+51|      onListening(devServer);
+52|    }
+53|    if (onAfterSetupMiddleware) {
+54|      onAfterSetupMiddleware(devServer);
+55|    }
+56|  };
+57|
+58|  return compatibleConfig;
+59|}
+60|
+61|// Conditionally load health check modules only if enabled
+62|let WebpackHealthPlugin;
+63|let setupHealthEndpoints;
+64|let healthPluginInstance;
+65|
+66|if (config.enableHealthCheck) {
+67|  WebpackHealthPlugin = require("./plugins/health-check/webpack-health-plugin");
+68|  setupHealthEndpoints = require("./plugins/health-check/health-endpoints");
+69|  healthPluginInstance = new WebpackHealthPlugin();
+70|}
+71|
+72|let webpackConfig = {
+73|  eslint: {
+74|    configure: {
+75|      extends: ["plugin:react-hooks/recommended"],
+76|      rules: {
+77|        "react-hooks/rules-of-hooks": "error",
+78|        "react-hooks/exhaustive-deps": "warn",
+79|      },
+80|    },
+81|  },
+82|  webpack: {
+83|    alias: {
+84|      '@': path.resolve(__dirname, 'src'),
+85|    },
+86|    configure: (webpackConfig) => {
+87|
+88|      // Add ignored patterns to reduce watched directories
+89|        webpackConfig.watchOptions = {
+90|          ...webpackConfig.watchOptions,
+91|          ignored: [
+92|            '**/node_modules/**',
+93|            '**/.git/**',
+94|            '**/build/**',
+95|            '**/dist/**',
+96|            '**/coverage/**',
+97|            '**/public/**',
+98|        ],
+99|      };
+100|
+101|      // Add health check plugin to webpack if enabled
+102|      if (config.enableHealthCheck && healthPluginInstance) {
+103|        webpackConfig.plugins.push(healthPluginInstance);
+104|      }
+105|      return webpackConfig;
+106|    },
+107|  },
+108|};
+109|
+110|webpackConfig.devServer = (devServerConfig) => {
+111|  // Add health check endpoints if enabled
+112|  if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
+113|    const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
+114|
+115|    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
+116|      // Call original setup if exists
+117|      if (originalSetupMiddlewares) {
+118|        middlewares = originalSetupMiddlewares(middlewares, devServer);
+119|      }
+120|
+121|      // Setup health endpoints
+122|      setupHealthEndpoints(devServer, healthPluginInstance);
+123|
+124|      return middlewares;
+125|    };
+126|  }
+127|
+128|  return devServerConfig;
+129|};
+130|
+131|// Wrap with visual edits (automatically adds babel plugin, dev server, and overlay in dev mode)
+132|if (isDevServer) {
+133|  try {
+134|    const { withVisualEdits } = require("@emergentbase/visual-edits/craco");
+135|    webpackConfig = withVisualEdits(webpackConfig);
+136|  } catch (err) {
+137|    if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('@emergentbase/visual-edits/craco')) {
+138|      console.warn(
+139|        "[visual-edits] @emergentbase/visual-edits not installed — visual editing disabled."
+140|      );
+141|    } else {
+142|      throw err;
+143|    }
+144|  }
+145|}
+146|
+147|const configureDevServer = webpackConfig.devServer;
+148|webpackConfig.devServer = (devServerConfig) =>
+149|  makeDevServerV5Compatible(configureDevServer(devServerConfig));
+150|
+151|module.exports = webpackConfig;
+152|
+[End of file]
