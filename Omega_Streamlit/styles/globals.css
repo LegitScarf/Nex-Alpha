@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400;1,6..72,500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --omega-bg: #ffffff;
+    --omega-bg-soft: #f8f9fa;
+    --omega-bg-mute: #f1f5f9;
+    --omega-ink: #0a0a0a;
+    --omega-ink-2: #475569;
+    --omega-ink-3: #94a3b8;
+    --omega-line: #e2e8f0;
+    --omega-line-soft: #f1f5f9;
+    --omega-blue: #0033ff;
+    --omega-blue-hover: #002ae6;
+    --font-heading: 'Cabinet Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Newsreader', ui-serif, Georgia, serif;
+}
+
+html,
+body,
+#root {
+    background: var(--omega-bg);
+    color: var(--omega-ink);
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'ss01', 'ss02';
+}
+
+.font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    font-weight: 500;
+}
+
+.font-serif-italic {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.font-body {
+    font-family: var(--font-body);
+}
+
+/* Selection */
+::selection {
+    background: var(--omega-ink);
+    color: #fff;
+}
+
+/* Scrollbars — subtle */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Grid backdrop for hero */
+.omega-grid {
+    background-image:
+        linear-gradient(to right, rgba(10, 10, 10, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(10, 10, 10, 0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 40%, transparent 100%);
+}
+
+.omega-noise {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    opacity: 0.035;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+/* Ticker (marquee) */
+@keyframes omega-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+.omega-marquee {
+    animation: omega-marquee 40s linear infinite;
+}
+
+/* Typewriter caret */
+.omega-caret::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -0.15em;
+    background: var(--omega-ink);
+    animation: omega-blink 1s steps(2) infinite;
+}
+@keyframes omega-blink {
+    50% { opacity: 0; }
+}
+
+/* Reveal utilities */
+.reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: reveal-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.reveal-1 { animation-delay: 0.05s; }
+.reveal-2 { animation-delay: 0.15s; }
+.reveal-3 { animation-delay: 0.25s; }
+.reveal-4 { animation-delay: 0.35s; }
+.reveal-5 { animation-delay: 0.45s; }
+
+@keyframes reveal-up {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Chat bubble entrance */
+@keyframes bubble-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.bubble-in {
+    animation: bubble-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pulse dot */
+@keyframes dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+.omega-dot { animation: dot 1.2s infinite; }
+.omega-dot:nth-child(2) { animation-delay: 0.15s; }
+.omega-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Shadcn compatibility (keep existing tokens light) */
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 3.9%;
+        --primary: 0 0% 9%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 96.1%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96.1%;
+        --muted-foreground: 0 0% 45.1%;
+        --accent: 0 0% 96.1%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 89.8%;
+        --input: 0 0% 89.8%;
+        --ring: 232 100% 50%;
+        --radius: 0.75rem;
+    }
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}

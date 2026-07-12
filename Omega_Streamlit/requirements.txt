@@ -1,0 +1,18 @@
+streamlit>=1.35.0
+pandas>=2.0.0
+numpy>=1.24.0
+plotly>=5.18.0
+openai>=1.0.0
+crewai>=0.80.0
+crewai-tools>=0.8.0
+duckdb>=0.10.0
+scipy>=1.10.0
+openpyxl>=3.1.0
+python-dotenv>=1.0.0
+fpdf2>=2.7.0
+# Lock kaleido version to 0.2.1 to avoid build dependency issues on Windows
+kaleido==0.2.1
+# FastAPI backend additions
+fastapi>=0.110.0
+uvicorn>=0.28.0
+python-multipart>=0.0.9
