@@ -44,3 +44,5 @@ api/*.db-wal
 api/*.db-shm
 uploads/
 
+
+.vercel

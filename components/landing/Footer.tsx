@@ -103,6 +103,21 @@ export default function Footer({ onLaunch, loading }: FooterProps) {
         </div>
       </div>
 
+      {/* Automation Agency CTA Contact Note */}
+      <div className="border-t border-black/5 bg-zinc-50/50 py-10" data-html2canvas-ignore>
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <p className="font-display font-bold text-lg text-[#0A0A0A] tracking-tight">
+            Wanna automate any tasks?{" "}
+            <a
+              href="mailto:contact@nexalpha.com?subject=Task Automation Inquiry"
+              className="text-[#FF5E00] hover:text-[#0047FF] hover:underline underline-offset-4 transition-colors font-black"
+            >
+              Feel free to reach out to us &rarr;
+            </a>
+          </p>
+        </div>
+      </div>
+
       {/* Bottom bar */}
       <div className="border-t border-black/5">
         <div className="max-w-7xl mx-auto px-6 md:px-8 py-8 flex flex-col md:flex-row items-center justify-between gap-4">

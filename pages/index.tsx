@@ -20,31 +20,7 @@ export default function Home() {
       window.location.href = "/sign-in";
       return;
     }
-    setLoadingProduct(productId);
-    setErrorMessage(null);
-    try {
-      const token = await getToken();
-      const response = await fetch(`/api/launch?product=${productId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Authentication validation failed");
-      }
-      const data = await response.json();
-      if (data.success && data.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      } else {
-        throw new Error("Invalid response received from server");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setErrorMessage(
-        err.message || "An unexpected error occurred while launching application."
-      );
-    } finally {
-      setLoadingProduct(null);
-    }
+    window.location.href = "/omega";
   };
 
   const isOmegaLoading = loadingProduct === "omega";
