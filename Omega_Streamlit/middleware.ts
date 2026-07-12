@@ -8,7 +8,8 @@ export default clerkMiddleware((auth, req) => {
   if (req.nextUrl.pathname === '/') {
     if (!userId) {
       // Redirect back to landing page login portal
-      return NextResponse.redirect('http://localhost:3000/sign-in')
+      const landingPageUrl = process.env.NEXT_PUBLIC_LANDING_PAGE_URL || 'http://localhost:3000'
+      return NextResponse.redirect(`${landingPageUrl}/sign-in`)
     }
   }
 })
