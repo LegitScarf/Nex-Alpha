@@ -8,7 +8,6 @@ import { Showcase } from "@/components/omega/Showcase";
 import { Footer } from "@/components/omega/Footer";
 import { Toaster } from "sonner";
 import { useAuth } from "@clerk/nextjs";
-import { Sidebar } from "@/components/omega/Sidebar";
 
 const OmegaExperience = () => {
   const { isLoaded, isSignedIn } = useAuth();
@@ -16,7 +15,6 @@ const OmegaExperience = () => {
   const chatRef = useRef<HTMLDivElement>(null);
   const uploadRef = useRef<HTMLDivElement>(null);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,15 +56,7 @@ const OmegaExperience = () => {
 
   return (
     <div className="min-h-screen bg-white text-[#0A0A0A] font-body flex" data-testid="omega-experience">
-      <Sidebar
-        onSelectSession={handleSelectSession}
-        onNewSession={handleNewSession}
-        currentSessionId={activeSessionId}
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
-      />
-      
-      <div className={`flex-1 min-h-screen flex flex-col transition-all duration-300 ${sidebarOpen ? "md:pl-80" : "pl-0"}`}>
+      <div className="flex-1 min-h-screen flex flex-col">
         <OmegaHeader onLaunch={scrollToUpload} />
         {!dataset && (
           <>
