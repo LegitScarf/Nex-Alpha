@@ -55,7 +55,7 @@ const OmegaExperience = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#0A0A0A] font-body flex" data-testid="omega-experience">
+    <div className="min-h-screen bg-white text-[#0A0A0A] font-body flex flex-col overflow-x-hidden" data-testid="omega-experience">
       <div className="flex-1 min-h-screen flex flex-col">
         <OmegaHeader onLaunch={scrollToUpload} />
         {!dataset && (
