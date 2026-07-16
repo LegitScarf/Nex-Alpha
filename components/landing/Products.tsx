@@ -225,7 +225,7 @@ export default function Products() {
         </div>
 
         {/* Bento grid */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-4 auto-rows-[220px] gap-5">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-4 auto-rows-[260px] gap-5">
           {cards.map((c, i) => {
             const Icon = c.icon;
             return (
