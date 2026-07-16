@@ -39,7 +39,7 @@ const tiers: TierItem[] = [
   },
   {
     name: "Alpha Pro",
-    price: "₹299",
+    price: "₹99",
     unit: "/ day",
     tagline:
       "For active business researchers and high-frequency analytical workflows.",
