@@ -52,6 +52,56 @@ const useTypewriter = (text: string, speed = 14) => {
   return { display, done };
 };
 
+const SliderInput = React.memo(({ name, label, min, max, value, onChange }: {
+  name: string;
+  label: string;
+  min: number;
+  max: number;
+  value: number;
+  onChange: (name: string, value: number) => void;
+}) => {
+  return (
+    <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white">
+      <div className="flex justify-between text-xs text-slate-600 font-medium font-sans">
+        <span>{label}</span>
+        <span className="font-semibold text-slate-800">{Number(value).toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={(max - min) / 100 || 0.1}
+        value={value}
+        onChange={(e) => onChange(name, parseFloat(e.target.value))}
+        className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0033FF]"
+      />
+    </div>
+  );
+});
+
+const SelectInput = React.memo(({ name, label, categories, value, onChange }: {
+  name: string;
+  label: string;
+  categories: string[];
+  value: string;
+  onChange: (name: string, value: string) => void;
+}) => {
+  return (
+    <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white font-sans">
+      <label className="text-xs text-slate-600 font-medium">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(name, e.target.value)}
+        className="text-xs text-slate-800 font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+      >
+        {categories.map((cat: string) => (
+          <option key={cat} value={cat}>{cat}</option>
+        ))}
+      </select>
+    </div>
+  );
+});
+
 const RegressionPredictor = ({ comp }: { comp: any }) => {
   const { target_column, intercept, coefficients, features, dummy_mappings, model_metrics } = comp;
   const [vals, setVals] = useState<Record<string, any>>(() => {
@@ -122,38 +172,28 @@ const RegressionPredictor = ({ comp }: { comp: any }) => {
             const max = feat.max;
             const current = vals[name] !== undefined ? vals[name] : feat.mean;
             return (
-              <div key={name} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white">
-                <div className="flex justify-between text-xs text-slate-600 font-medium font-sans">
-                  <span>{humaniseColumn(name)}</span>
-                  <span className="font-semibold text-slate-800">{Number(current).toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  min={min}
-                  max={max}
-                  step={(max - min) / 100 || 0.1}
-                  value={current}
-                  onChange={(e) => handleSliderChange(name, parseFloat(e.target.value))}
-                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0033FF]"
-                />
-              </div>
+              <SliderInput
+                key={name}
+                name={name}
+                label={humaniseColumn(name)}
+                min={min}
+                max={max}
+                value={current}
+                onChange={handleSliderChange}
+              />
             );
           } else {
             const current = vals[name] || "";
             const cats = feat.categories || [];
             return (
-              <div key={name} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white font-sans">
-                <label className="text-xs text-slate-600 font-medium">{humaniseColumn(name)}</label>
-                <select
-                  value={current}
-                  onChange={(e) => handleSelectChange(name, e.target.value)}
-                  className="text-xs text-slate-800 font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-                >
-                  {cats.map((cat: string) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+              <SelectInput
+                key={name}
+                name={name}
+                label={humaniseColumn(name)}
+                categories={cats}
+                value={current}
+                onChange={handleSelectChange}
+              />
             );
           }
         })}
@@ -236,38 +276,28 @@ const ClassificationPredictor = ({ comp }: { comp: any }) => {
             const max = feat.max;
             const current = vals[name] !== undefined ? vals[name] : feat.mean;
             return (
-              <div key={name} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white">
-                <div className="flex justify-between text-xs text-slate-600 font-medium font-sans">
-                  <span>{humaniseColumn(name)}</span>
-                  <span className="font-semibold text-slate-800">{Number(current).toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  min={min}
-                  max={max}
-                  step={(max - min) / 100 || 0.1}
-                  value={current}
-                  onChange={(e) => handleSliderChange(name, parseFloat(e.target.value))}
-                  className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0033FF]"
-                />
-              </div>
+              <SliderInput
+                key={name}
+                name={name}
+                label={humaniseColumn(name)}
+                min={min}
+                max={max}
+                value={current}
+                onChange={handleSliderChange}
+              />
             );
           } else {
             const current = vals[name] || "";
             const cats = feat.categories || [];
             return (
-              <div key={name} className="flex flex-col gap-1.5 p-3 rounded-xl border border-slate-100 bg-white font-sans">
-                <label className="text-xs text-slate-600 font-medium">{humaniseColumn(name)}</label>
-                <select
-                  value={current}
-                  onChange={(e) => handleSelectChange(name, e.target.value)}
-                  className="text-xs text-slate-800 font-semibold bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-                >
-                  {cats.map((cat: string) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+              <SelectInput
+                key={name}
+                name={name}
+                label={humaniseColumn(name)}
+                categories={cats}
+                value={current}
+                onChange={handleSelectChange}
+              />
             );
           }
         })}
@@ -374,7 +404,7 @@ const ForecastPredictor = ({ comp }: { comp: any }) => {
   );
 };
 
-const AssistantBubble = ({ msg, isLatest, index }: { msg: ChatMessage; isLatest: boolean; index: number }) => {
+const AssistantBubble = ({ msg, isLatest, index, dataset }: { msg: ChatMessage; isLatest: boolean; index: number; dataset: any }) => {
   const { display, done } = useTypewriter(msg.answer || "", 12);
   const [copied, setCopied] = useState(false);
 
@@ -407,7 +437,7 @@ const AssistantBubble = ({ msg, isLatest, index }: { msg: ChatMessage; isLatest:
                 }
                 if (comp.type === "chart" && comp.spec) {
                   return (
-                    <div key={idx} className="w-full">
+                    <div key={idx} className="w-full" data-chart-index={`${index}-${idx}`}>
                       <OmegaChart spec={comp.spec} />
                     </div>
                   );
@@ -552,7 +582,19 @@ const AssistantBubble = ({ msg, isLatest, index }: { msg: ChatMessage; isLatest:
               {copied ? "Copied" : "Copy"}
             </button>
             <button
-              onClick={() => exportToPDF(`assistant-bubble-${index}`, `omega-analysis-block-${index}.pdf`)}
+              onClick={() => {
+                const compsWithKeys = msg.components?.map((c, cIdx) => 
+                  c.type === "chart" ? { ...c, chartKey: `chart-${index}-${cIdx}` } : c
+                ) || [];
+                exportToPDF(
+                  `assistant-bubble-${index}`,
+                  `omega-analysis-block-${index}.pdf`,
+                  compsWithKeys,
+                  `Analysis: ${dataset?.name || "Query Report"}`,
+                  dataset?.name,
+                  dataset ? `${dataset.rows} rows · ${dataset.columns.length} columns` : undefined
+                );
+              }}
               className="inline-flex items-center gap-1 hover:text-[#0047FF] transition-colors"
               data-html2canvas-ignore
             >
@@ -702,7 +744,34 @@ export const ChatInterface = ({
           </div>
           <div className="flex items-center gap-4" data-html2canvas-ignore>
             <button
-              onClick={() => exportToPDF("chat-messages-container", `session-export-${sessionId || 'new'}.pdf`)}
+              onClick={() => {
+                const sessionComponents: any[] = [];
+                messages.forEach((m, mIdx) => {
+                  if (m.role === "user") {
+                    sessionComponents.push({ type: "user_message", text: m.text || "" });
+                  } else if (m.role === "omega") {
+                    m.components?.forEach((c, cIdx) => {
+                      if (c.type === "chart") {
+                        sessionComponents.push({
+                          ...c,
+                          chartKey: `chart-${mIdx}-${cIdx}`
+                        });
+                      } else {
+                        sessionComponents.push(c);
+                      }
+                    });
+                  }
+                });
+
+                exportToPDF(
+                  "chat-messages-container",
+                  `session-export-${sessionId || "new"}.pdf`,
+                  sessionComponents,
+                  `Session Analysis: ${dataset?.name || "Query Report"}`,
+                  dataset?.name,
+                  dataset ? `${dataset.rows} rows · ${dataset.columns.length} columns` : undefined
+                );
+              }}
               className="inline-flex items-center gap-1.5 text-[12px] text-[#0047FF] hover:text-[#0036C2] font-semibold transition-colors font-sans"
             >
               <Download className="w-3.5 h-3.5" />
@@ -802,6 +871,7 @@ export const ChatInterface = ({
                   msg={m}
                   isLatest={idx === messages.length - 1}
                   index={idx}
+                  dataset={dataset}
                 />
               )
             )}

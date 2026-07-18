@@ -261,8 +261,23 @@ def fit_regression_model(
         # Prepare regression dataframe
         working_df = df[all_cols].copy()
         
-        # Coerce target column to numeric
-        working_df[target_col] = pd.to_numeric(working_df[target_col], errors='coerce')
+        # If regression target is categorical, map low cardinality classes dynamically to numeric codes
+        if not pd.api.types.is_numeric_dtype(working_df[target_col]):
+            coerced_target = pd.to_numeric(working_df[target_col], errors='coerce')
+            # If target coercion results in mostly NaNs, it is a discrete category target
+            if coerced_target.notna().sum() < (len(working_df) * 0.5):
+                working_df[target_col] = working_df[target_col].astype(str)
+                unique_t_vals = sorted(working_df[target_col].dropna().unique().tolist())
+                if len(unique_t_vals) <= 10:
+                    mapping = {val: float(idx) for idx, val in enumerate(unique_t_vals)}
+                    working_df[target_col] = working_df[target_col].map(mapping)
+                    logger.info(f"Target '{target_col}' is categorical. Mapped classes to codes: {mapping}")
+                else:
+                    working_df[target_col] = coerced_target
+            else:
+                working_df[target_col] = coerced_target
+        else:
+            working_df[target_col] = pd.to_numeric(working_df[target_col], errors='coerce')
         
         # Identify types of features
         numeric_features = []
@@ -479,10 +494,17 @@ def fit_classification_model(
         # Drop missing features and target
         working_df = working_df.dropna(subset=[target_col] + numeric_features)
         
-        # Downsample large datasets to 50k rows for low-latency fitting
+        # Downsample large datasets to 50k rows for low-latency fitting (using stratified sampling to preserve rare classes)
         if len(working_df) > 50000:
-            logger.info("Downsampling dataset to 50,000 rows for classification fitting.")
-            working_df = working_df.sample(n=50000, random_state=42)
+            logger.info("Downsampling dataset to 50,000 rows using stratified sampling.")
+            try:
+                # Sample proportionally per group, ensuring each group has at least 2 samples
+                working_df = working_df.groupby(target_col, group_keys=False).apply(
+                    lambda x: x.sample(n=max(2, int(50000 * len(x) / len(working_df))), random_state=42, replace=False)
+                )
+            except Exception as e:
+                logger.warning(f"Stratified sampling failed: {e}. Falling back to simple random sampling.")
+                working_df = working_df.sample(n=50000, random_state=42)
             
         if len(working_df) < 10:
             res = {
