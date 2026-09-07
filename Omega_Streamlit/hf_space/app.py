@@ -8,12 +8,25 @@ import shutil
 import contextlib
 import traceback
 from typing import Dict, Any, Optional
+
+# Force unbuffered output so all container logs stream in real time to Hugging Face
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
+print("===== Omega ZeroGPU Sandbox Initializing =====", flush=True)
+
 try:
     import gradio as gr
     HAS_GRADIO = True
+    print(f"Loaded Gradio version: {gr.__version__}", flush=True)
 except ImportError:
     gr = None
     HAS_GRADIO = False
+    print("Warning: Gradio not installed in this environment.", flush=True)
+
 import pandas as pd
 import numpy as np
 import scipy
@@ -30,8 +43,10 @@ import plotly.express as px
 try:
     import spaces
     HAS_ZEROGPU = True
+    print("ZeroGPU hardware driver detected and active (@spaces.GPU enabled).", flush=True)
 except (ImportError, Exception):
     HAS_ZEROGPU = False
+    print("ZeroGPU module not available. Operating in CPU compatibility mode.", flush=True)
     class MockSpaces:
         @staticmethod
         def GPU(duration=60):
@@ -302,41 +317,44 @@ def handle_execute(dataset_id: str, code: str, raw_csv_fallback: str = "", requi
     return json.dumps(result)
 
 # ── Gradio Public Interface ───────────────────────────────────────────────────
+demo = None
 if HAS_GRADIO:
     with gr.Blocks(title="Omega ZeroGPU Sandbox") as demo:
         gr.Markdown("## ⚡ NexAlpha Omega — Public ZeroGPU Execution Sandbox")
-    gr.Markdown("Air-gapped computational backend executing agentic data science routines on NVIDIA hardware.")
+        gr.Markdown("Air-gapped computational backend executing agentic data science routines on NVIDIA hardware.")
 
-    with gr.Tab("Execute Code"):
-        in_dataset_id = gr.Textbox(label="Dataset ID", placeholder="uuid-string")
-        in_code = gr.Code(label="Python Code Script", language="python")
-        in_fallback_csv = gr.Textbox(label="Fallback CSV (Optional)", visible=False)
-        in_require_gpu = gr.Checkbox(label="Require GPU Acceleration", value=False)
-        btn_run = gr.Button("Execute in Sandbox", variant="primary")
-        out_json = gr.JSON(label="Execution Result and Artifacts")
-        btn_run.click(
-            fn=handle_execute,
-            inputs=[in_dataset_id, in_code, in_fallback_csv, in_require_gpu],
-            outputs=[out_json],
-            api_name="execute"
-        )
+        with gr.Tab("Execute Code"):
+            in_dataset_id = gr.Textbox(label="Dataset ID", placeholder="uuid-string")
+            in_code = gr.Code(label="Python Code Script", language="python")
+            in_fallback_csv = gr.Textbox(label="Fallback CSV (Optional)", visible=False)
+            in_require_gpu = gr.Checkbox(label="Require GPU Acceleration", value=False)
+            btn_run = gr.Button("Execute in Sandbox", variant="primary")
+            out_json = gr.JSON(label="Execution Result and Artifacts")
+            btn_run.click(
+                fn=handle_execute,
+                inputs=[in_dataset_id, in_code, in_fallback_csv, in_require_gpu],
+                outputs=[out_json],
+                api_name="execute"
+            )
 
-    with gr.Tab("Stage Dataset"):
-        stage_id = gr.Textbox(label="Dataset ID")
-        stage_csv = gr.Textbox(label="Raw CSV / JSON Content", lines=10)
-        btn_stage = gr.Button("Stage Dataset")
-        stage_out = gr.JSON(label="Staging Status")
-        btn_stage.click(
-            fn=handle_stage_dataset,
-            inputs=[stage_id, stage_csv],
-            outputs=[stage_out],
-            api_name="stage_dataset"
-        )
+        with gr.Tab("Stage Dataset"):
+            stage_id = gr.Textbox(label="Dataset ID")
+            stage_csv = gr.Textbox(label="Raw CSV / JSON Content", lines=10)
+            btn_stage = gr.Button("Stage Dataset")
+            stage_out = gr.JSON(label="Staging Status")
+            btn_stage.click(
+                fn=handle_stage_dataset,
+                inputs=[stage_id, stage_csv],
+                outputs=[stage_out],
+                api_name="stage_dataset"
+            )
 
-    with gr.Tab("Health"):
-        btn_health = gr.Button("Check Health")
-        health_out = gr.JSON(label="Health Status")
-        btn_health.click(fn=handle_health, inputs=[], outputs=[health_out], api_name="health")
+        with gr.Tab("Health"):
+            btn_health = gr.Button("Check Health")
+            health_out = gr.JSON(label="Health Status")
+            btn_health.click(fn=handle_health, inputs=[], outputs=[health_out], api_name="health")
 
-if __name__ == "__main__" and HAS_GRADIO and demo:
-    demo.queue().launch()
+# Unconditionally launch on 0.0.0.0:7860 so Hugging Face reverse proxy connects immediately
+if HAS_GRADIO and demo:
+    print("Launching Gradio queue on 0.0.0.0:7860...", flush=True)
+    demo.queue().launch(server_name="0.0.0.0", server_port=7860, show_error=True)

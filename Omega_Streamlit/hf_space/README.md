@@ -1,12 +1,12 @@
-﻿---
+---
 title: Omega Analytics ZeroGPU Sandbox
 emoji: ⚡
 colorFrom: blue
 colorTo: indigo
 sdk: gradio
-sdk_version: 4.44.0
 app_file: app.py
 pinned: false
+app_port: 7860
 ---
 
 # Omega Analytics - Remote ZeroGPU Execution Sandbox
