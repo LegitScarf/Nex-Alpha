@@ -40,10 +40,25 @@ def _invoke_with_fallback(client, preferred_model: str, fallback_model: str, mes
     Invokes the preferred high-reasoning model (e.g. gpt-5.6-luna),
     with automatic seamless failover to the verified fallback model on 404/rate limits.
     """
+    preferred_kwargs = dict(kwargs)
+    # Advanced reasoning models (e.g. gpt-5.6-luna, o1, o3-mini) do not accept custom temperature values
+    is_reasoning_model = any(k in preferred_model.lower() for k in ["luna", "o1", "o3", "reasoning", "gpt-5"])
+    if is_reasoning_model and "temperature" in preferred_kwargs:
+        preferred_kwargs.pop("temperature")
+
     try:
         logger.info(f"Invoking primary agent model: '{preferred_model}'...")
-        return client.chat.completions.create(model=preferred_model, messages=messages, **kwargs)
+        return client.chat.completions.create(model=preferred_model, messages=messages, **preferred_kwargs)
     except Exception as e:
+        # If API rejects custom temperature, retry without temperature
+        if "temperature" in str(e).lower() and "temperature" in preferred_kwargs:
+            try:
+                preferred_kwargs.pop("temperature", None)
+                logger.info(f"Retrying '{preferred_model}' without temperature parameter...")
+                return client.chat.completions.create(model=preferred_model, messages=messages, **preferred_kwargs)
+            except Exception as retry_err:
+                e = retry_err
+
         logger.warning(f"Primary model '{preferred_model}' failed with error: {e}. Automatically falling back to '{fallback_model}'...")
         return client.chat.completions.create(model=fallback_model, messages=messages, **kwargs)
 

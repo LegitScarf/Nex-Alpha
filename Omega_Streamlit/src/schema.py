@@ -60,7 +60,7 @@ def _infer_semantic_type(col: str, series: pd.Series) -> str:
         # Try parsing as datetime
         sample = series.dropna().head(10)
         try:
-            pd.to_datetime(sample, infer_datetime_format=True)
+            pd.to_datetime(sample, errors="raise")
             return "datetime"
         except Exception:
             pass
