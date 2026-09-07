@@ -29,6 +29,24 @@ if not logger.handlers:
     logger.addHandler(ch)
     logger.setLevel(logging.INFO)
 
+# ── Dynamic Model Tiering (gpt-5.6-luna with Resilient Fallback) ────────────────
+PLANNER_MODEL = os.getenv("OMEGA_PLANNER_MODEL", "gpt-5.6-luna")
+CODER_MODEL = os.getenv("OMEGA_CODER_MODEL", "gpt-5.6-luna")
+FALLBACK_PLANNER_MODEL = os.getenv("OMEGA_FALLBACK_PLANNER", "o3-mini")
+FALLBACK_CODER_MODEL = os.getenv("OMEGA_FALLBACK_CODER", "gpt-4o-mini")
+
+def _invoke_with_fallback(client, preferred_model: str, fallback_model: str, messages: list, **kwargs):
+    """
+    Invokes the preferred high-reasoning model (e.g. gpt-5.6-luna),
+    with automatic seamless failover to the verified fallback model on 404/rate limits.
+    """
+    try:
+        logger.info(f"Invoking primary agent model: '{preferred_model}'...")
+        return client.chat.completions.create(model=preferred_model, messages=messages, **kwargs)
+    except Exception as e:
+        logger.warning(f"Primary model '{preferred_model}' failed with error: {e}. Automatically falling back to '{fallback_model}'...")
+        return client.chat.completions.create(model=fallback_model, messages=messages, **kwargs)
+
 # ── Intent parser ──────────────────────────────────────────────────────────────
 # Classified preprocessing step
 _INTENT_SYSTEM_PROMPT = """
@@ -527,6 +545,7 @@ def run_omega(
     step_callback: Optional[Callable] = None,
     task_callback: Optional[Callable] = None,
     chat_history:  Optional[list] = None,
+    dataset_id:    Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Agentic Reasoning Platform (Omega V3).
@@ -579,31 +598,23 @@ def run_omega(
             history_context_str += f"- User asked: \"{q}\"\n- Insight returned: \"{ans}\"\n"
 
     # Step 3: Run the Planner Agent to generate a markdown plan
-    logger.info("Planner Agent generating analytical plan...")
+    logger.info(f"Planner Agent generating analytical plan with {PLANNER_MODEL}...")
     planner_messages = [
         {"role": "system", "content": _PLANNER_SYSTEM_PROMPT.strip()},
         {"role": "user", "content": f"User Query: {user_query}\n\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Sample (first 5 rows):\n{sample_str}\n{bm_context}\n{history_context_str}"}
     ]
     try:
-        planner_response = client.chat.completions.create(
-            model="o3-mini",
-            messages=planner_messages,
+        planner_response = _invoke_with_fallback(
+            client=client,
+            preferred_model=PLANNER_MODEL,
+            fallback_model=FALLBACK_PLANNER_MODEL,
+            messages=planner_messages
         )
         analytical_plan = planner_response.choices[0].message.content
         logger.info(f"Analytical plan formulated successfully:\n{analytical_plan[:300]}...")
     except Exception as e:
-        logger.warning(f"Planner Agent failed with o3-mini: {e}. Retrying with gpt-4o-mini...")
-        try:
-            planner_response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=planner_messages,
-                temperature=0.1
-            )
-            analytical_plan = planner_response.choices[0].message.content
-            logger.info(f"Analytical plan formulated successfully using gpt-4o-mini:\n{analytical_plan[:300]}...")
-        except Exception as retry_err:
-            logger.error(f"Planner Agent retry failed: {retry_err}")
-            analytical_plan = f"Analyze the dataset schema and user query '{user_query}' to extract key stats and render a plotly chart."
+        logger.error(f"Planner Agent fallback failed: {e}")
+        analytical_plan = f"Analyze the dataset schema and user query '{user_query}' to extract key stats and render a plotly chart."
 
     # Step 4: Setup Coder Agent instructions & loop
     # Filter schema_str to only include columns referenced in the plan or query (Dynamic Schema Truncation)
@@ -660,12 +671,14 @@ Please generate the Python code to perform this analysis and write the required 
     ]
 
     for attempt in range(1, max_attempts + 1):
-        logger.info(f"Attempting to generate python code (Attempt {attempt}/{max_attempts})...")
+        logger.info(f"Attempting to generate python code with {CODER_MODEL} (Attempt {attempt}/{max_attempts})...")
         try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
+            response = _invoke_with_fallback(
+                client=client,
+                preferred_model=CODER_MODEL,
+                fallback_model=FALLBACK_CODER_MODEL,
                 messages=history,
-                temperature=0.1,
+                temperature=0.1
             )
             reply = response.choices[0].message.content
             history.append({"role": "assistant", "content": reply})
@@ -684,7 +697,7 @@ Please generate the Python code to perform this analysis and write the required 
             if task_callback:
                 task_callback(MockTaskOutput("run_query"))
 
-            result = execute_code(code, dataframe)
+            result = execute_code(code, dataframe, dataset_id=dataset_id)
 
             if result["success"]:
                 logger.info("Sandbox execution completed successfully!")

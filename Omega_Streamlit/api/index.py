@@ -426,6 +426,15 @@ async def upload_dataset(file: UploadFile = File(...)):
             bootstrap_business_model(df)
         except Exception as e:
             print(f"Non-critical: Business model bootstrap skipped: {e}")
+
+        # Asynchronously pre-stage dataset to remote Hugging Face ZeroGPU sandbox
+        try:
+            from src.hf_sandbox_client import stage_dataset_remote, is_remote_configured
+            if is_remote_configured():
+                import threading
+                threading.Thread(target=stage_dataset_remote, args=(dataset_id, df), daemon=True).start()
+        except Exception as e:
+            print(f"Non-critical: Remote staging dispatch skipped: {e}")
         
         # Build dataset preview
         preview = df.head(8).astype(str).to_dict(orient="records")
@@ -484,6 +493,16 @@ async def load_sample(req: SampleRequest):
             bootstrap_business_model(df)
         except Exception as e:
             print(f"Non-critical: Business model bootstrap skipped: {e}")
+
+        # Asynchronously pre-stage sample dataset to remote Hugging Face ZeroGPU sandbox
+        try:
+            from src.hf_sandbox_client import stage_dataset_remote, is_remote_configured
+            if is_remote_configured():
+                import threading
+                threading.Thread(target=stage_dataset_remote, args=(dataset_id, df), daemon=True).start()
+        except Exception as e:
+            print(f"Non-critical: Remote staging dispatch skipped: {e}")
+
         preview = df.head(8).astype(str).to_dict(orient="records")
         
         return DatasetSummary(
@@ -531,13 +550,14 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
     token = session_output_dir.set(session_dir)
     
     try:
-        # Run agentic analysis loop using Omega V3 crew.py
+        # Run agentic analysis loop using Omega V3 crew.py with remote ZeroGPU sandbox support
         final_insight = run_omega(
             user_query=req.message,
             dataframe=df,
             step_callback=None,
             task_callback=None,
-            chat_history=None
+            chat_history=None,
+            dataset_id=req.dataset_id
         )
         
         # Load and convert all generated chart files (chart.json, chart_1.json, chart_2.json, chart_3.json)

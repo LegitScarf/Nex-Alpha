@@ -1,0 +1,9 @@
+﻿gradio>=4.44.0
+spaces
+pandas
+numpy
+scipy
+statsmodels
+plotly
+pyarrow
+scikit-learn
