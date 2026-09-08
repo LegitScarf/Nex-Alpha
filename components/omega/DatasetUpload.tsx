@@ -25,12 +25,16 @@ export const DatasetUpload = ({ onDataset }: { onDataset: (data: any) => void })
       fd.append("file", file);
       const { data } = await axios.post(`${API}/datasets/upload`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 120000,
+        timeout: 300000,
       });
       toast.success(`Loaded ${data.name} · ${data.rows} rows`);
       onDataset(data);
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Could not parse file");
+      if (e?.code === "ECONNABORTED") {
+        toast.error("Upload timed out. Please check your network and try again.");
+      } else {
+        toast.error(e?.response?.data?.detail || "Could not parse file. Ensure it is a valid CSV/Excel.");
+      }
     } finally {
       setLoading(false);
     }
@@ -39,11 +43,11 @@ export const DatasetUpload = ({ onDataset }: { onDataset: (data: any) => void })
   const loadSample = async (key: string) => {
     setLoadingSample(key);
     try {
-      const { data } = await axios.post(`${API}/datasets/sample`, { name: key }, { timeout: 120000 });
+      const { data } = await axios.post(`${API}/datasets/sample`, { name: key }, { timeout: 300000 });
       toast.success(`Sample ${key} loaded`);
       onDataset(data);
-    } catch (e) {
-      toast.error("Could not load sample");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Could not load sample");
     } finally {
       setLoadingSample(null);
     }

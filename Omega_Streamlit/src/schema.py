@@ -57,13 +57,25 @@ def _infer_semantic_type(col: str, series: pd.Series) -> str:
         return "numeric_integer"
 
     if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype):
-        # Try parsing as datetime
+        # Try parsing as datetime if column name suggests date/time or strings look like dates
         sample = series.dropna().head(10)
-        try:
-            pd.to_datetime(sample, errors="raise")
-            return "datetime"
-        except Exception:
-            pass
+        if len(sample) > 0:
+            date_name_signals = ("date", "time", "year", "month", "day", "created", "updated", "at", "period", "timestamp")
+            first_val = str(sample.iloc[0]).strip()
+            looks_like_date = any(c in first_val for c in ["-", "/", ":", " "]) and any(char.isdigit() for char in first_val)
+            if looks_like_date or any(sig in col_lower for sig in date_name_signals):
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    try:
+                        pd.to_datetime(sample, errors="raise", format="mixed")
+                        return "datetime"
+                    except Exception:
+                        try:
+                            pd.to_datetime(sample, errors="raise")
+                            return "datetime"
+                        except Exception:
+                            pass
 
         # Identifier heuristic: very high cardinality + id/key/code in name
         id_signals = ("id", "key", "code", "uuid", "ref", "token", "hash")

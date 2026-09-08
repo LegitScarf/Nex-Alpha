@@ -427,6 +427,12 @@ const AssistantBubble = ({ msg, isLatest, index, dataset }: { msg: ChatMessage; 
             </div>
           ) : (
             <div className="flex flex-col gap-5 font-sans text-[15px] leading-relaxed text-[#0A0A0A]">
+              {/* Ensure text answer is rendered if components does not contain markdown or as primary text */}
+              {(!msg.components || !msg.components.some((c: any) => c.type === "markdown")) && msg.answer && (
+                <div className="whitespace-pre-wrap font-sans">
+                  {msg.answer}
+                </div>
+              )}
               {msg.components?.map((comp: any, idx: number) => {
                 if (comp.type === "markdown") {
                   return (
@@ -617,19 +623,38 @@ const UserBubble = ({ text }: { text: string }) => (
   </div>
 );
 
-const Thinking = () => (
-  <div className="flex items-start gap-3" data-testid="chat-thinking">
-    <div className="mt-1 w-7 h-7 shrink-0 rounded-lg bg-[#0A0A0A] text-white flex items-center justify-center text-[11px] font-heading font-bold">
-      Ω
+const Thinking = () => {
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  const phases = [
+    "Formulating analytical plan…",
+    "Writing execution code…",
+    "Executing in ZeroGPU sandbox…",
+    "Composing executive insights and charts…"
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhaseIdx((prev) => (prev + 1) % phases.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [phases.length]);
+
+  return (
+    <div className="flex items-start gap-3" data-testid="chat-thinking">
+      <div className="mt-1 w-7 h-7 shrink-0 rounded-lg bg-[#0A0A0A] text-white flex items-center justify-center text-[11px] font-heading font-bold">
+        Ω
+      </div>
+      <div className="rounded-2xl rounded-tl-sm bg-[#F8F9FA] border border-slate-100 px-5 py-4 flex items-center gap-2 font-sans">
+        <span className="omega-dot w-1.5 h-1.5 rounded-full bg-[#0033FF] animate-pulse inline-block" />
+        <span className="omega-dot w-1.5 h-1.5 rounded-full bg-[#0033FF] animate-pulse [animation-delay:0.2s] inline-block" />
+        <span className="omega-dot w-1.5 h-1.5 rounded-full bg-[#0033FF] animate-pulse [animation-delay:0.4s] inline-block" />
+        <span className="ml-2 text-xs text-slate-600 font-medium transition-opacity duration-300">
+          {phases[phaseIdx]}
+        </span>
+      </div>
     </div>
-    <div className="rounded-2xl rounded-tl-sm bg-[#F8F9FA] border border-slate-100 px-5 py-4 flex items-center gap-1.5 font-sans">
-      <span className="omega-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-      <span className="omega-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-      <span className="omega-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-      <span className="ml-2 text-xs text-slate-500 font-medium">Analysing your dataset…</span>
-    </div>
-  </div>
-);
+  );
+};
 
 export const ChatInterface = ({ 
   dataset, 
@@ -695,7 +720,7 @@ export const ChatInterface = ({
         session_id: sessionId,
         message: question,
       }, { 
-        timeout: 120000,
+        timeout: 300000,
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -713,7 +738,23 @@ export const ChatInterface = ({
       if (data.followups?.length) setSuggestions(data.followups);
     } catch (e: any) {
       console.error("Chat error details:", e);
-      toast.error(e?.response?.data?.detail || "Omega couldn't respond. Try again.");
+      const errMsg = e?.code === "ECONNABORTED"
+        ? "Analysis timed out after 5 minutes. Try asking a more specific query."
+        : (e?.response?.data?.detail || "Omega couldn't complete this response. Please try again.");
+      toast.error(errMsg);
+      setMessages((m) => [
+        ...m,
+        {
+          role: "omega",
+          answer: `⚠️ **Notice**: ${errMsg}`,
+          components: [
+            {
+              type: "markdown",
+              content: `⚠️ **Notice**: ${errMsg}\n\nYou can click one of the suggested prompts below or try rephrasing your question.`
+            }
+          ]
+        }
+      ]);
     } finally {
       setSending(false);
     }

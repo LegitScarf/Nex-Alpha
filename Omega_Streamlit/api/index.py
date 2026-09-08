@@ -422,10 +422,12 @@ async def upload_dataset(file: UploadFile = File(...)):
             dtypes=dtypes_map
         )
         
+        # Asynchronously bootstrap semantic business model in background thread
         try:
-            bootstrap_business_model(df)
+            import threading
+            threading.Thread(target=bootstrap_business_model, args=(df,), daemon=True).start()
         except Exception as e:
-            print(f"Non-critical: Business model bootstrap skipped: {e}")
+            print(f"Non-critical: Business model bootstrap dispatch skipped: {e}")
 
         # Asynchronously pre-stage dataset to remote Hugging Face ZeroGPU sandbox
         try:
@@ -489,10 +491,12 @@ async def load_sample(req: SampleRequest):
             dtypes=dtypes_map
         )
         
+        # Asynchronously bootstrap semantic business model in background thread
         try:
-            bootstrap_business_model(df)
+            import threading
+            threading.Thread(target=bootstrap_business_model, args=(df,), daemon=True).start()
         except Exception as e:
-            print(f"Non-critical: Business model bootstrap skipped: {e}")
+            print(f"Non-critical: Business model bootstrap dispatch skipped: {e}")
 
         # Asynchronously pre-stage sample dataset to remote Hugging Face ZeroGPU sandbox
         try:
@@ -636,7 +640,12 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
                 insert_idx = 1 if len(components) > 1 else len(components)
                 for idx, c_spec in enumerate(charts_list):
                     components.insert(insert_idx + idx, {"type": "chart", "spec": c_spec.dict()})
-                    
+
+        # Ensure components always contains at least one markdown text block with answer
+        has_markdown = any(c.get("type") == "markdown" and c.get("content") for c in components)
+        if not has_markdown and answer:
+            components.insert(0, {"type": "markdown", "content": answer})
+
         # Check for predictive prediction models and inject real-time simulators
         prediction_path = get_output_path("prediction.json")
         if os.path.exists(prediction_path):

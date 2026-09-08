@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import logging
 from typing import Dict, Any, Optional, Callable
 from pathlib import Path
@@ -29,9 +30,9 @@ if not logger.handlers:
     logger.addHandler(ch)
     logger.setLevel(logging.INFO)
 
-# ── Dynamic Model Tiering (gpt-5.6-luna with Resilient Fallback) ────────────────
+# ── Dynamic Model Tiering (Decoupled Reasoning Planner + Rapid Code Specialist) ──
 PLANNER_MODEL = os.getenv("OMEGA_PLANNER_MODEL", "gpt-5.6-luna")
-CODER_MODEL = os.getenv("OMEGA_CODER_MODEL", "gpt-5.6-luna")
+CODER_MODEL = os.getenv("OMEGA_CODER_MODEL", "gpt-4o-mini")
 FALLBACK_PLANNER_MODEL = os.getenv("OMEGA_FALLBACK_PLANNER", "o3-mini")
 FALLBACK_CODER_MODEL = os.getenv("OMEGA_FALLBACK_CODER", "gpt-4o-mini")
 
@@ -569,6 +570,7 @@ def run_omega(
     """
     from .interpreter import execute_code
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    t_pipeline_start = time.time()
 
     # Step 1: Initialize empty/skipped state for all output files to prevent frontend hang
     logger.info("Initializing default output JSON states...")
@@ -618,6 +620,7 @@ def run_omega(
         {"role": "system", "content": _PLANNER_SYSTEM_PROMPT.strip()},
         {"role": "user", "content": f"User Query: {user_query}\n\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Sample (first 5 rows):\n{sample_str}\n{bm_context}\n{history_context_str}"}
     ]
+    t_planner_start = time.time()
     try:
         planner_response = _invoke_with_fallback(
             client=client,
@@ -626,7 +629,8 @@ def run_omega(
             messages=planner_messages
         )
         analytical_plan = planner_response.choices[0].message.content
-        logger.info(f"Analytical plan formulated successfully:\n{analytical_plan[:300]}...")
+        planner_dur = time.time() - t_planner_start
+        logger.info(f"Planner Agent completed in {planner_dur:.1f}s. Plan formulated successfully:\n{analytical_plan[:300]}...")
     except Exception as e:
         logger.error(f"Planner Agent fallback failed: {e}")
         analytical_plan = f"Analyze the dataset schema and user query '{user_query}' to extract key stats and render a plotly chart."
@@ -687,6 +691,7 @@ Please generate the Python code to perform this analysis and write the required 
 
     for attempt in range(1, max_attempts + 1):
         logger.info(f"Attempting to generate python code with {CODER_MODEL} (Attempt {attempt}/{max_attempts})...")
+        t_coder_start = time.time()
         try:
             response = _invoke_with_fallback(
                 client=client,
@@ -695,7 +700,9 @@ Please generate the Python code to perform this analysis and write the required 
                 messages=history,
                 temperature=0.1
             )
+            coder_dur = time.time() - t_coder_start
             reply = response.choices[0].message.content
+            logger.info(f"Coder Agent generated code in {coder_dur:.1f}s with {CODER_MODEL} (Attempt {attempt})")
             history.append({"role": "assistant", "content": reply})
 
             # Extract code block
@@ -748,6 +755,7 @@ Please generate the Python code to perform this analysis and write the required 
     elif "correlation" in user_query.lower() or "test" in user_query.lower():
         intent_type = "correlation"
     
+    t_insight_start = time.time()
     final_insight = _generate_insight_via_llm(
         user_query=user_query,
         intent_type=intent_type,
@@ -757,6 +765,9 @@ Please generate the Python code to perform this analysis and write the required 
         hypothesis_data=hypothesis_data,
         prediction_data=prediction_data
     )
+    insight_dur = time.time() - t_insight_start
+    total_dur = time.time() - t_pipeline_start
+    logger.info(f"Insight generator finished in {insight_dur:.1f}s. Total analytical pipeline completed in {total_dur:.1f}s!")
 
     # Write the final result back to disk so Streamlit UI updates
     _write_json("insight.json", final_insight)
