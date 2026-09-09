@@ -143,6 +143,23 @@ def execute_code(
                 }
             logger.info("Failing over to fortified local sandbox...")
 
+    # Safe numeric conversion helpers commonly assumed by data science LLMs
+    def safe_float(v, default=0.0):
+        try:
+            if v is None or pd.isna(v):
+                return default
+            return float(v)
+        except Exception:
+            return default
+
+    def safe_int(v, default=0):
+        try:
+            if v is None or pd.isna(v):
+                return default
+            return int(v)
+        except Exception:
+            return default
+
     # ── Tier 2: Fortified Local Execution Sandbox ──────────────────────────────
     logger.info("Executing in fortified local sandbox...")
     exec_globals = {
@@ -161,6 +178,8 @@ def execute_code(
         "fit_classification_model": fit_classification_model,
         "fit_kmeans_clustering": fit_kmeans_clustering,
         "forecast_time_series": forecast_time_series,
+        "safe_float": safe_float,
+        "safe_int": safe_int,
     }
     exec_locals = {}
 

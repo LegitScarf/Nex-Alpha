@@ -21,7 +21,7 @@ if not logger.handlers:
 HF_SPACE_URL = os.getenv("HF_SPACE_URL", "").rstrip("/")
 HF_SPACE_ID = os.getenv("HF_SPACE_ID", "")
 HF_TOKEN = os.getenv("HF_TOKEN", None)
-DEFAULT_TIMEOUT = float(os.getenv("OMEGA_SANDBOX_TIMEOUT", "12.0"))
+DEFAULT_TIMEOUT = float(os.getenv("OMEGA_SANDBOX_TIMEOUT", "30.0"))
 
 def get_effective_space_url() -> str:
     global HF_SPACE_URL
