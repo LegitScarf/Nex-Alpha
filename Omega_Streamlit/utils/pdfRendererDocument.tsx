@@ -418,12 +418,17 @@ export const OmegaPDFDocument = ({
             <View key={idx} wrap={false}>
               <Text style={styles.sectionTitle}>Actionable Strategies</Text>
               <View style={{ marginBottom: 16 }}>
-                {comp.strategies.map((strat: string, sIdx: number) => (
-                  <View key={sIdx} style={styles.bulletItem}>
-                    <Text style={styles.bulletPoint}>•</Text>
-                    <Text style={styles.bulletText}>{strat}</Text>
-                  </View>
-                ))}
+                {comp.strategies.map((strat: any, sIdx: number) => {
+                  const stratText = typeof strat === "object" && strat !== null
+                    ? (strat.strategy || strat.action || strat.title || JSON.stringify(strat))
+                    : String(strat);
+                  return (
+                    <View key={sIdx} style={styles.bulletItem}>
+                      <Text style={styles.bulletPoint}>•</Text>
+                      <Text style={styles.bulletText}>{stratText}</Text>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           );
@@ -463,9 +468,19 @@ export const OmegaPDFDocument = ({
           return (
             <View key={idx} style={styles.riskCard} wrap={false}>
               <Text style={styles.riskTitle}>Risks & Operational Concerns</Text>
-              {comp.risks.map((risk: string, rIdx: number) => (
-                <Text key={rIdx} style={styles.riskItem}>• {risk}</Text>
-              ))}
+              {comp.risks.map((risk: any, rIdx: number) => {
+                let riskText = "";
+                if (typeof risk === "object" && risk !== null) {
+                  const r = risk.risk || risk.title || risk.description || "";
+                  const m = risk.mitigation || risk.recommendation || "";
+                  riskText = r && m ? `${r} (Mitigation: ${m})` : (r || JSON.stringify(risk));
+                } else {
+                  riskText = String(risk);
+                }
+                return (
+                  <Text key={rIdx} style={styles.riskItem}>• {riskText}</Text>
+                );
+              })}
             </View>
           );
         }

@@ -603,9 +603,24 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
         if not followups:
             followups = ["Can you elaborate on these trends?", "Show me a distribution plot.", "What are the key contributors?"]
             
+        def _sanitize_risk_item(r) -> str:
+            if isinstance(r, dict):
+                risk_name = r.get("risk") or r.get("title") or r.get("description") or ""
+                mitigation = r.get("mitigation") or r.get("recommendation") or ""
+                if risk_name and mitigation:
+                    return f"{risk_name} (Mitigation: {mitigation})"
+                return str(risk_name) if risk_name else json.dumps(r)
+            return str(r)
+
+        def _sanitize_strategy_item(s) -> str:
+            if isinstance(s, dict):
+                return str(s.get("strategy") or s.get("action") or s.get("title") or json.dumps(s))
+            return str(s)
+
         # Build dynamic visual components list
         components = []
         raw_components = final_insight.get("components", [])
+        layout_contract = final_insight.get("layout_contract", [])
         
         if not raw_components or not isinstance(raw_components, list):
             # Fallback to structured sequence
@@ -614,16 +629,16 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
                 components.append({"type": "chart", "spec": c_spec.dict()})
             
             strats = final_insight.get("strategies", [])
-            if strats:
-                components.append({"type": "strategies", "strategies": strats})
+            if strats and (not layout_contract or any(k in layout_contract for k in ["strategies", "recommendations"])):
+                components.append({"type": "strategies", "strategies": [_sanitize_strategy_item(s) for s in strats if s]})
                 
             p_matrix = final_insight.get("priority_matrix", [])
-            if p_matrix:
+            if p_matrix and (not layout_contract or "priority_matrix" in layout_contract or "scorecard" in layout_contract):
                 components.append({"type": "priority_matrix", "priority_matrix": p_matrix})
                 
             r_list = final_insight.get("risks", [])
-            if r_list:
-                components.append({"type": "risks", "risks": r_list})
+            if r_list and (not layout_contract or "risks" in layout_contract):
+                components.append({"type": "risks", "risks": [_sanitize_risk_item(r) for r in r_list if r]})
         else:
             has_chart_block = False
             for comp in raw_components:
@@ -672,24 +687,24 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
                         "rows": safe_rows
                     })
                 elif c_type == "strategies" and comp.get("strategies"):
-                    components.append({"type": "strategies", "strategies": [str(s) for s in comp["strategies"]]})
+                    components.append({"type": "strategies", "strategies": [_sanitize_strategy_item(s) for s in comp["strategies"] if s]})
                 elif c_type == "priority_matrix" and comp.get("priority_matrix"):
                     components.append({"type": "priority_matrix", "priority_matrix": comp["priority_matrix"]})
                 elif c_type == "risks" and comp.get("risks"):
-                    components.append({"type": "risks", "risks": [str(r) for r in comp["risks"]]})
+                    components.append({"type": "risks", "risks": [_sanitize_risk_item(r) for r in comp["risks"] if r]})
                     
             if not has_chart_block and charts_list:
                 insert_idx = 1 if len(components) > 1 else len(components)
                 for idx, c_spec in enumerate(charts_list):
                     components.insert(insert_idx + idx, {"type": "chart", "spec": c_spec.dict()})
 
-        # Ensure strategies, priority_matrix, and risks from final_insight are never dropped
+        # Ensure strategies, priority_matrix, and risks from final_insight are never dropped when appropriate
         strats = final_insight.get("strategies", [])
-        if strats and not any(c.get("type") == "strategies" for c in components):
-            components.append({"type": "strategies", "strategies": [str(s) for s in strats if s]})
+        if strats and (not layout_contract or any(k in layout_contract for k in ["strategies", "recommendations"])) and not any(c.get("type") == "strategies" for c in components):
+            components.append({"type": "strategies", "strategies": [_sanitize_strategy_item(s) for s in strats if s]})
 
         p_matrix = final_insight.get("priority_matrix", [])
-        if p_matrix and not any(c.get("type") == "priority_matrix" for c in components):
+        if p_matrix and (not layout_contract or "priority_matrix" in layout_contract or "scorecard" in layout_contract) and not any(c.get("type") == "priority_matrix" for c in components):
             sanitized_p_matrix = []
             for item in p_matrix:
                 if isinstance(item, dict):
@@ -702,12 +717,15 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
                 components.append({"type": "priority_matrix", "priority_matrix": sanitized_p_matrix})
 
         r_list = final_insight.get("risks", [])
-        if r_list and not any(c.get("type") == "risks" for c in components):
-            components.append({"type": "risks", "risks": [str(r) for r in r_list if r]})
+        if r_list and (not layout_contract or "risks" in layout_contract) and not any(c.get("type") == "risks" for c in components):
+            components.append({"type": "risks", "risks": [_sanitize_risk_item(r) for r in r_list if r]})
 
-        # Ensure components always contains at least one markdown text block with answer
-        has_markdown = any(c.get("type") == "markdown" and c.get("content") for c in components)
-        if not has_markdown and answer:
+        # Ensure components always contains the full rich answer in its primary markdown block
+        first_markdown = next((c for c in components if c.get("type") == "markdown"), None)
+        if first_markdown:
+            if len(first_markdown.get("content", "")) < len(answer):
+                first_markdown["content"] = answer
+        elif answer:
             components.insert(0, {"type": "markdown", "content": answer})
 
         # Check for predictive prediction models and inject real-time simulators

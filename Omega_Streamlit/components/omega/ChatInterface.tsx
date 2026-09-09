@@ -427,11 +427,17 @@ const AssistantBubble = ({ msg, isLatest, index, dataset }: { msg: ChatMessage; 
             </div>
           ) : (
             <div className="flex flex-col gap-5 font-sans text-[15px] leading-relaxed text-[#0A0A0A]">
+              {/* Ensure primary answer text is always rendered if no markdown component exists */}
+              {(!msg.components || !msg.components.some((c: any) => c.type === "markdown" && c.content)) && msg.answer && (
+                <div className="whitespace-pre-wrap font-sans">
+                  {msg.answer}
+                </div>
+              )}
               {msg.components?.map((comp: any, idx: number) => {
                 if (comp.type === "markdown") {
                   return (
                     <div key={idx} className="whitespace-pre-wrap font-sans">
-                      {comp.content}
+                      {comp.content || msg.answer}
                     </div>
                   );
                 }
@@ -485,12 +491,17 @@ const AssistantBubble = ({ msg, isLatest, index, dataset }: { msg: ChatMessage; 
                         🎯 Actionable Strategies
                       </h4>
                       <ul className="space-y-2">
-                        {comp.strategies.map((strategy: string, sIdx: number) => (
-                          <li key={sIdx} className="text-[14px] text-slate-600 flex items-start gap-2">
-                            <span className="text-[#0033FF] font-bold mt-0.5">•</span>
-                            <span>{strategy}</span>
-                          </li>
-                        ))}
+                        {comp.strategies.map((strategy: any, sIdx: number) => {
+                          const stratText = typeof strategy === "object" && strategy !== null
+                            ? (strategy.strategy || strategy.action || strategy.title || JSON.stringify(strategy))
+                            : String(strategy);
+                          return (
+                            <li key={sIdx} className="text-[14px] text-slate-600 flex items-start gap-2">
+                              <span className="text-[#0033FF] font-bold mt-0.5">•</span>
+                              <span>{stratText}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   );
@@ -546,12 +557,22 @@ const AssistantBubble = ({ msg, isLatest, index, dataset }: { msg: ChatMessage; 
                           ⚠️ Risks & Operational Concerns
                         </h4>
                         <ul className="space-y-1.5">
-                          {comp.risks.map((risk: string, rIdx: number) => (
-                            <li key={rIdx} className="text-[13px] text-rose-700 flex items-start gap-1.5">
-                              <span className="font-bold mt-0.5">•</span>
-                              <span>{risk}</span>
-                            </li>
-                          ))}
+                          {comp.risks.map((risk: any, rIdx: number) => {
+                            let riskText = "";
+                            if (typeof risk === "object" && risk !== null) {
+                              const r = risk.risk || risk.title || risk.description || "";
+                              const m = risk.mitigation || risk.recommendation || "";
+                              riskText = r && m ? `${r} (Mitigation: ${m})` : (r || JSON.stringify(risk));
+                            } else {
+                              riskText = String(risk);
+                            }
+                            return (
+                              <li key={rIdx} className="text-[13px] text-rose-700 flex items-start gap-1.5">
+                                <span className="font-bold mt-0.5">•</span>
+                                <span>{riskText}</span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     </div>

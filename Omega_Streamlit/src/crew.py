@@ -137,21 +137,23 @@ def _parse_intent(user_query: str, schema: str) -> Dict[str, Any]:
         }
 
 
-# ── Fast Rule-Based Intent & Complexity Classifier ─────────────────────────────
+# ── Hybrid Intent & Complexity Classifier ─────────────────────────────────────
 
 def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, Any]:
     """
-    Zero-latency heuristic query classifier that categorizes business queries
-    into distinct analytical complexity tiers without slowing down pipeline turnaround.
+    Hybrid two-stage intent classifier:
+    1. Fast-Path Heuristic: Matches explicit business keywords in 0.01ms.
+    2. Micro-LLM Semantic Fallback (gpt-4o-mini): Classifies nuanced, ambiguous, or conversational queries in ~0.5s.
     """
     q = user_query.lower().strip()
     
-    # Check for Executive / Strategic Decision keywords
+    # Fast-Path Stage 1: Explicit Strategic / Executive Keywords
     strategic_keywords = [
         "ceo", "shut down", "shutdown", "close down", "discontinue", "expand", "invest", 
         "strategy", "strategic", "decision", "action plan", "take a call", "recommend",
-        "which one should", "what should we", "how to improve", "how should we", "roadmap", 
-        "prioritize", "optimization", "cut costs", "allocate"
+        "which one should", "what should we", "how to improve", "how should we", 
+        "how can we address", "how do we address", "address", "tackle", "mitigate", "boost",
+        "roadmap", "prioritize", "optimization", "cut costs", "allocate"
     ]
     if any(k in q for k in strategic_keywords):
         return {
@@ -161,11 +163,12 @@ def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, An
             "requires_tradeoffs": True
         }
         
-    # Check for Driver / Attribution / Factor influence keywords
+    # Fast-Path Stage 2: Driver / Attribution / Factor Influence Keywords
     driver_keywords = [
-        "factor", "factors", "driver", "drivers", "affect", "affects", "impact", "impacts",
-        "influence", "influences", "correlated", "correlation", "relationship", "contributor",
-        "contributors", "lead to", "leads to", "cause", "causes", "determines"
+        "factor", "factors", "driver", "drivers", "drive", "drives", "driving",
+        "affect", "affects", "impact", "impacts", "influence", "influences", 
+        "correlated", "correlation", "relationship", "contribute", "contributes",
+        "contributor", "contributors", "lead to", "leads to", "cause", "causes", "determines"
     ]
     if any(k in q for k in driver_keywords):
         return {
@@ -175,7 +178,7 @@ def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, An
             "requires_tradeoffs": False
         }
 
-    # Check for Predictive / Machine Learning keywords
+    # Fast-Path Stage 3: Predictive / ML Keywords
     predictive_keywords = ["forecast", "predict", "projection", "estimate future", "classify", "cluster", "segmentation"]
     if any(k in q for k in predictive_keywords):
         return {
@@ -185,7 +188,7 @@ def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, An
             "requires_tradeoffs": False
         }
         
-    # Check for Direct Aggregation / Comparisons
+    # Fast-Path Stage 4: Direct Aggregation / Comparisons
     agg_keywords = ["average", "mean", "median", "total", "sum", "count", "how many", "top ", "highest", "lowest", "distribution", "breakdown"]
     if any(k in q for k in agg_keywords):
         return {
@@ -194,6 +197,41 @@ def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, An
             "requires_scorecard": False,
             "requires_tradeoffs": False
         }
+
+    # Stage 5: Semantic Micro-LLM Fallback via gpt-4o-mini
+    try:
+        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        prompt = f"""Classify the user analytics query into one of these exact intents:
+- 'strategic_decision' (asking for business strategy, shutting down, expanding, optimizing, or recommendations)
+- 'driver_attribution' (asking what factors, drivers, or attributes influence/affect an outcome)
+- 'predictive' (asking to forecast, predict, or cluster)
+- 'aggregation' (asking for specific counts, averages, sums, top lists, or direct comparisons)
+- 'descriptive' (general overview, data profiling, summary)
+
+User Query: "{user_query}"
+Return JSON: {{"intent_type": "..."}}"""
+
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=40
+        )
+        parsed = json.loads(res.choices[0].message.content)
+        intent = parsed.get("intent_type", "descriptive")
+        if intent in ["strategic_decision", "driver_attribution", "predictive", "aggregation", "descriptive"]:
+            tier = "Tier 3: Strategic Executive Decision" if intent == "strategic_decision" else (
+                "Tier 2: Driver & Attribution Analysis" if intent == "driver_attribution" else "Tier 1: Analytical Query"
+            )
+            return {
+                "intent_type": intent,
+                "complexity_tier": tier,
+                "requires_scorecard": (intent == "strategic_decision"),
+                "requires_tradeoffs": (intent == "strategic_decision")
+            }
+    except Exception as e:
+        logger.warning(f"Micro-intent LLM fallback failed: {e}")
 
     return {
         "intent_type": "descriptive",
@@ -222,9 +260,9 @@ You must return ONLY a valid JSON object with exactly these eight keys:
   [{"action": "Action description", "impact": "High"/"Medium"/"Low", "effort": "High"/"Medium"/"Low"}]
 - "risks": A list of 2 to 4 concrete operational, customer, or regulatory risks with practical mitigation steps.
 - "error": null (or error message).
-- "components": A list of dynamic layout components to render. Structure them logically:
+- "components": A list of dynamic layout components to render. Write your complete, rich executive briefing into the markdown content (DO NOT use placeholder text):
   [
-    {"type": "markdown", "content": "### Executive Decision Brief\nDirect strategic recommendation and contextual rationale."},
+    {"type": "markdown", "content": "### Executive Decision Brief\\n[Write your complete, rich 2-3 paragraph executive analysis here with data justification]"},
     {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
     {"type": "table", "headers": ["Segment/Dimension", "Metric 1", "Metric 2", ...], "rows": [["Val1", "Val2", ...]]},
     {"type": "chart", "plotly_spec": {}}
@@ -249,9 +287,9 @@ You must return ONLY a valid JSON object with exactly these eight keys:
   [{"action": "Action description", "impact": "High"/"Medium"/"Low", "effort": "High"/"Medium"/"Low"}]
 - "risks": A list of 2 to 4 risks or caveats (e.g. correlation vs causation, data limitations, diminishing returns).
 - "error": null (or error message).
-- "components": A list of layout components:
+- "components": A list of layout components. Write your complete driver analysis into the markdown content (DO NOT use placeholder text):
   [
-    {"type": "markdown", "content": "### Key Factors & Driver Analysis\nDetailed breakdown of factor importance and strategic implications."},
+    {"type": "markdown", "content": "### Key Factors & Driver Analysis\\n[Write your complete analytical narrative here with correlation scores and driver breakdown]"},
     {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
     {"type": "table", "headers": ["Factor / Attribute", "Impact Level", "Correlation / Score", "Actionability"], "rows": [["Factor Name", "High", "+0.72", "High"]]},
     {"type": "chart", "plotly_spec": {}}
@@ -271,7 +309,7 @@ You must return ONLY a valid JSON object with exactly these eight keys:
 - "error": null (or error message).
 - "components": A list of layout components to render:
   [
-    {"type": "markdown", "content": "### Data Health & Summary\nDetailed overview of dataset structure and distributions."},
+    {"type": "markdown", "content": "### Data Health & Summary\\n[Write your full descriptive summary here]"},
     {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
     {"type": "table", "headers": ["Col1", "Col2"], "rows": [["Val1", "Val2"]]},
     {"type": "chart", "plotly_spec": {}}
@@ -355,6 +393,7 @@ def _generate_insight_via_llm(
     chart_data: Dict[str, Any],
     hypothesis_data: Optional[Dict[str, Any]] = None,
     prediction_data: Optional[Dict[str, Any]] = None,
+    layout_contract: Optional[list] = None,
 ) -> Dict[str, Any]:
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     
@@ -368,7 +407,11 @@ def _generate_insight_via_llm(
             prediction_data = _load_json_safely("prediction.json")
 
     context = f"User Query: {user_query}\n"
-    context += f"Intent Type: {intent_type}\n\n"
+    context += f"Intent Type: {intent_type}\n"
+    if layout_contract:
+        context += f"Layout Contract (Only include these components): {layout_contract}\n\n"
+    else:
+        context += "\n"
     
     if eda_data and eda_data.get("status") != "skipped":
         context += "Descriptive Statistics / EDA Summary:\n"
@@ -463,6 +506,7 @@ def _generate_insight_via_llm(
             parsed["risks"] = []
                     
         parsed["intent_type"] = intent_type
+        parsed["layout_contract"] = layout_contract or []
         return parsed
         
     except Exception as exc:
@@ -536,6 +580,15 @@ Describe the exact 2 to 4 pandas/numpy calculations, groupings, or statistical t
 <chart_spec>
 Specify 1 clear Plotly chart (type, x, y, title) that visually communicates the analytical answer.
 </chart_spec>
+
+<layout_contract>
+Specify the optimal list of UI components required for this specific intent.
+Options: "kpis", "chart", "table", "risks", "recommendations".
+Format as a comma-separated list, e.g.:
+For driver queries: chart, table, recommendations
+For descriptive queries: kpis, chart
+For strategic queries: kpis, chart, table, risks, recommendations
+</layout_contract>
 
 <output_files>
 List only the relevant output files to write:
@@ -678,6 +731,15 @@ def run_omega(
         logger.error(f"Planner Agent fallback failed: {e}")
         analytical_plan = f"Analyze the dataset schema and user query '{user_query}' to extract key stats and render a plotly chart."
 
+    # Extract layout contract if proposed by the Planner Agent
+    import re
+    layout_contract = []
+    layout_match = re.search(r"<layout_contract>(.*?)</layout_contract>", analytical_plan, re.DOTALL | re.IGNORECASE)
+    if layout_match:
+        raw_components = layout_match.group(1).split(",")
+        layout_contract = [c.strip().lower() for c in raw_components if c.strip()]
+        logger.info(f"Planner contracted layout components: {layout_contract}")
+
     # Step 4: Setup Coder Agent instructions & loop
     # Filter schema_str to only include columns referenced in the plan or query (Dynamic Schema Truncation)
     truncated_schema_lines = []
@@ -806,7 +868,8 @@ Please generate the Python code to perform this analysis and write the required 
         query_data=query_data,
         chart_data=chart_data,
         hypothesis_data=hypothesis_data,
-        prediction_data=prediction_data
+        prediction_data=prediction_data,
+        layout_contract=layout_contract
     )
     insight_dur = time.time() - t_insight_start
     total_dur = time.time() - t_pipeline_start
