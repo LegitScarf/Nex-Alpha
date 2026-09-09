@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   // Chart image
   chartImage: {
     width: "100%",
-    height: 160,
+    height: 220,
     objectFit: "contain",
     borderRadius: 6,
     borderWidth: 0.5,
@@ -245,12 +245,33 @@ interface PDFDocumentProps {
   chartImages?: Record<string, string>; // mapping from component index or chart id to base64 data url
 }
 
-// Clean markdown bold notation and custom bullet points for PDF output
+// Clean markdown bold notation, headers, and custom bullet points for PDF output
 const parseMarkdownText = (text: string) => {
   if (!text) return [];
   const lines = text.split("\n");
   return lines.map((line, idx) => {
     const trimmed = line.trim();
+    if (trimmed.startsWith("### ")) {
+      return (
+        <Text key={idx} style={[styles.sectionTitle, { fontSize: 10, marginTop: 10, marginBottom: 4, borderBottomWidth: 0 }]}>
+          {trimmed.substring(4).replace(/\*\*/g, "")}
+        </Text>
+      );
+    }
+    if (trimmed.startsWith("## ")) {
+      return (
+        <Text key={idx} style={[styles.sectionTitle, { fontSize: 11, marginTop: 12, marginBottom: 5 }]}>
+          {trimmed.substring(3).replace(/\*\*/g, "")}
+        </Text>
+      );
+    }
+    if (trimmed.startsWith("# ")) {
+      return (
+        <Text key={idx} style={[styles.sectionTitle, { fontSize: 12.5, marginTop: 14, marginBottom: 6 }]}>
+          {trimmed.substring(2).replace(/\*\*/g, "")}
+        </Text>
+      );
+    }
     if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
       const content = trimmed.substring(2).replace(/\*\*/g, "");
       return (
@@ -259,6 +280,9 @@ const parseMarkdownText = (text: string) => {
           <Text style={styles.bulletText}>{content}</Text>
         </View>
       );
+    }
+    if (!trimmed) {
+      return <View key={idx} style={{ height: 4 }} />;
     }
     return (
       <Text key={idx} style={styles.paragraph}>
@@ -300,9 +324,9 @@ export const OmegaPDFDocument = ({
       {/* Dynamic Content Sections */}
       {components.map((comp, idx) => {
         if (comp.type === "markdown" && comp.content) {
-          // Detect key summary to put in a callout card
-          const isSummary = comp.content.toLowerCase().includes("key insight") || idx === 0;
-          if (isSummary) {
+          const hasHeadings = comp.content.includes("#");
+          const isCallout = comp.content.toLowerCase().includes("key insight") && !hasHeadings;
+          if (isCallout) {
             return (
               <View key={idx} style={styles.card} wrap={false}>
                 <Text style={styles.cardTitle}>Executive Insight Summary</Text>

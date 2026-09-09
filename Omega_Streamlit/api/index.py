@@ -357,19 +357,31 @@ def convert_plotly_to_recharts(plotly_spec) -> Optional[ChartSpec]:
     if not x or not y:
         return None
         
-    if t_type not in ["bar", "line", "pie"]:
-        t_type = "bar"
-        
+    # Detect orientation (e.g. horizontal bar charts for driver importance)
+    is_horizontal = trace.get("orientation") == "h"
+    if not is_horizontal and len(x) > 0 and len(y) > 0:
+        try:
+            # If x values are numeric but y values are non-numeric strings, treat as horizontal
+            float(x[0])
+            try:
+                float(y[0])
+            except (ValueError, TypeError):
+                is_horizontal = True
+        except (ValueError, TypeError):
+            pass
+
     recharts_data = []
     for xi, yi in zip(x, y):
+        cat_name = str(yi) if is_horizontal else str(xi)
+        raw_val = xi if is_horizontal else yi
         try:
-            val = float(yi)
+            val = float(raw_val)
             import math
             if math.isnan(val) or math.isinf(val):
                 val = 0.0
         except Exception:
             val = 0.0
-        recharts_data.append({"name": str(xi), "value": val})
+        recharts_data.append({"name": cat_name, "value": val})
 
     return ChartSpec(
         type=t_type,
@@ -626,20 +638,72 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
                     elif charts_list:
                         components.append({"type": "chart", "spec": charts_list[0].dict()})
                 elif c_type == "markdown":
-                    components.append({"type": "markdown", "content": comp.get("content", "")})
+                    content = comp.get("content", "")
+                    if content:
+                        components.append({"type": "markdown", "content": str(content)})
                 elif c_type == "metric_grid":
-                    components.append({"type": "metric_grid", "metrics": comp.get("metrics", [])})
+                    raw_metrics = comp.get("metrics", [])
+                    safe_metrics = []
+                    if isinstance(raw_metrics, list):
+                        for m in raw_metrics:
+                            if isinstance(m, dict):
+                                safe_metrics.append({
+                                    "label": str(m.get("label", "Metric")),
+                                    "value": str(m.get("value", ""))
+                                })
+                    if safe_metrics:
+                        components.append({"type": "metric_grid", "metrics": safe_metrics})
                 elif c_type == "table":
+                    raw_headers = comp.get("headers", [])
+                    raw_rows = comp.get("rows", [])
+                    safe_headers = [str(h) for h in raw_headers] if isinstance(raw_headers, list) else []
+                    safe_rows = []
+                    if isinstance(raw_rows, list):
+                        for row in raw_rows:
+                            if isinstance(row, list):
+                                safe_rows.append([str(cell) if cell is not None else "" for cell in row])
+                            elif isinstance(row, dict):
+                                if not safe_headers:
+                                    safe_headers = list(row.keys())
+                                safe_rows.append([str(row.get(k, "")) for k in safe_headers])
                     components.append({
                         "type": "table",
-                        "headers": comp.get("headers", []),
-                        "rows": comp.get("rows", [])
+                        "headers": safe_headers,
+                        "rows": safe_rows
                     })
+                elif c_type == "strategies" and comp.get("strategies"):
+                    components.append({"type": "strategies", "strategies": [str(s) for s in comp["strategies"]]})
+                elif c_type == "priority_matrix" and comp.get("priority_matrix"):
+                    components.append({"type": "priority_matrix", "priority_matrix": comp["priority_matrix"]})
+                elif c_type == "risks" and comp.get("risks"):
+                    components.append({"type": "risks", "risks": [str(r) for r in comp["risks"]]})
                     
             if not has_chart_block and charts_list:
                 insert_idx = 1 if len(components) > 1 else len(components)
                 for idx, c_spec in enumerate(charts_list):
                     components.insert(insert_idx + idx, {"type": "chart", "spec": c_spec.dict()})
+
+        # Ensure strategies, priority_matrix, and risks from final_insight are never dropped
+        strats = final_insight.get("strategies", [])
+        if strats and not any(c.get("type") == "strategies" for c in components):
+            components.append({"type": "strategies", "strategies": [str(s) for s in strats if s]})
+
+        p_matrix = final_insight.get("priority_matrix", [])
+        if p_matrix and not any(c.get("type") == "priority_matrix" for c in components):
+            sanitized_p_matrix = []
+            for item in p_matrix:
+                if isinstance(item, dict):
+                    sanitized_p_matrix.append({
+                        "action": str(item.get("action", "")),
+                        "impact": str(item.get("impact", "Medium")),
+                        "effort": str(item.get("effort", "Medium")),
+                    })
+            if sanitized_p_matrix:
+                components.append({"type": "priority_matrix", "priority_matrix": sanitized_p_matrix})
+
+        r_list = final_insight.get("risks", [])
+        if r_list and not any(c.get("type") == "risks" for c in components):
+            components.append({"type": "risks", "risks": [str(r) for r in r_list if r]})
 
         # Ensure components always contains at least one markdown text block with answer
         has_markdown = any(c.get("type") == "markdown" and c.get("content") for c in components)

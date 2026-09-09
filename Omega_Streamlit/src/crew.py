@@ -137,21 +137,141 @@ def _parse_intent(user_query: str, schema: str) -> Dict[str, Any]:
         }
 
 
+# ── Fast Rule-Based Intent & Complexity Classifier ─────────────────────────────
+
+def classify_query_intent(user_query: str, schema_str: str = "") -> Dict[str, Any]:
+    """
+    Zero-latency heuristic query classifier that categorizes business queries
+    into distinct analytical complexity tiers without slowing down pipeline turnaround.
+    """
+    q = user_query.lower().strip()
+    
+    # Check for Executive / Strategic Decision keywords
+    strategic_keywords = [
+        "ceo", "shut down", "shutdown", "close down", "discontinue", "expand", "invest", 
+        "strategy", "strategic", "decision", "action plan", "take a call", "recommend",
+        "which one should", "what should we", "how to improve", "how should we", "roadmap", 
+        "prioritize", "optimization", "cut costs", "allocate"
+    ]
+    if any(k in q for k in strategic_keywords):
+        return {
+            "intent_type": "strategic_decision",
+            "complexity_tier": "Tier 3: Strategic Executive Decision",
+            "requires_scorecard": True,
+            "requires_tradeoffs": True
+        }
+        
+    # Check for Driver / Attribution / Factor influence keywords
+    driver_keywords = [
+        "factor", "factors", "driver", "drivers", "affect", "affects", "impact", "impacts",
+        "influence", "influences", "correlated", "correlation", "relationship", "contributor",
+        "contributors", "lead to", "leads to", "cause", "causes", "determines"
+    ]
+    if any(k in q for k in driver_keywords):
+        return {
+            "intent_type": "driver_attribution",
+            "complexity_tier": "Tier 2: Driver & Attribution Analysis",
+            "requires_scorecard": False,
+            "requires_tradeoffs": False
+        }
+
+    # Check for Predictive / Machine Learning keywords
+    predictive_keywords = ["forecast", "predict", "projection", "estimate future", "classify", "cluster", "segmentation"]
+    if any(k in q for k in predictive_keywords):
+        return {
+            "intent_type": "predictive",
+            "complexity_tier": "Tier 2: Predictive Modeling",
+            "requires_scorecard": False,
+            "requires_tradeoffs": False
+        }
+        
+    # Check for Direct Aggregation / Comparisons
+    agg_keywords = ["average", "mean", "median", "total", "sum", "count", "how many", "top ", "highest", "lowest", "distribution", "breakdown"]
+    if any(k in q for k in agg_keywords):
+        return {
+            "intent_type": "aggregation",
+            "complexity_tier": "Tier 1: Direct Metric Aggregation",
+            "requires_scorecard": False,
+            "requires_tradeoffs": False
+        }
+
+    return {
+        "intent_type": "descriptive",
+        "complexity_tier": "Tier 1: Descriptive Profiling",
+        "requires_scorecard": False,
+        "requires_tradeoffs": False
+    }
+
+
 # ── Structured Insight Generation ──────────────────────────────────────────────
+_STRATEGIC_INSIGHT_PROMPT = """
+You are the user's Principal Executive Advisor and Chief Strategy Consultant, named Omega.
+The user is asking a high-stakes strategic decision or business direction question.
+
+Your objective is to provide an authoritative, consulting-grade executive briefing. Back every claim with concrete metrics calculated from the data.
+
+You must return ONLY a valid JSON object with exactly these eight keys:
+- "insight_text": A thorough executive briefing (2 to 3 structured paragraphs).
+  * Paragraph 1 (Executive Recommendation): Direct, clear answer to the user's decision question with primary rationale and quantitative justification.
+  * Paragraph 2 (Quantitative Evidence & Trade-offs): Explain the data findings across key dimensions (volume, revenue/income, adoption rate, infrastructure), contrasting the best vs. worst performing segments.
+  * Paragraph 3 (Strategic Impact & Downside Mitigation): What does the business risk or gain by this decision, and what is the recommended transition approach?
+- "key_metric": A clean summary metric (e.g. "Primary Recommendation: Shut down Rural (10,007 customers, 42% adoption)").
+- "follow_up_suggestions": Exactly 2 forward-looking, strategic follow-up questions for the executive.
+- "strategies": A list of 3 to 5 concrete, actionable strategic steps (e.g. operational phase-out, customer migration, capital reallocation).
+- "priority_matrix": A list of 3 to 5 structured objects:
+  [{"action": "Action description", "impact": "High"/"Medium"/"Low", "effort": "High"/"Medium"/"Low"}]
+- "risks": A list of 2 to 4 concrete operational, customer, or regulatory risks with practical mitigation steps.
+- "error": null (or error message).
+- "components": A list of dynamic layout components to render. Structure them logically:
+  [
+    {"type": "markdown", "content": "### Executive Decision Brief\nDirect strategic recommendation and contextual rationale."},
+    {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
+    {"type": "table", "headers": ["Segment/Dimension", "Metric 1", "Metric 2", ...], "rows": [["Val1", "Val2", ...]]},
+    {"type": "chart", "plotly_spec": {}}
+  ]
+"""
+
+_DRIVER_INSIGHT_PROMPT = """
+You are a Principal Data Scientist and Analytics Consultant, named Omega.
+The user is asking which factors, attributes, or drivers most significantly influence a target outcome.
+
+Your objective is to provide an evidence-grounded driver attribution analysis, distinguishing between statistically dominant drivers and minor factors, and highlighting which levers are actionable for the organization.
+
+You must return ONLY a valid JSON object with exactly these eight keys:
+- "insight_text": A thorough, 2 to 3 paragraph analytical briefing.
+  * Paragraph 1 (Dominant Drivers): State the top positive and negative factors affecting the target outcome with quantitative impact/correlation scores.
+  * Paragraph 2 (Nuance & Levers): Contrast actionable factors (e.g. knowledge, infrastructure access, education) with fixed demographic attributes (e.g. age, location).
+  * Paragraph 3 (Actionable Business Takeaway): Where should the organization concentrate its investment or interventions for maximum ROI?
+- "key_metric": A clean string summarizing the standout driver (e.g. "Top Driver: EV Knowledge Score (r = 0.72)").
+- "follow_up_suggestions": Exactly 2 plain-English analytical follow-up questions.
+- "strategies": A list of 3 to 5 concrete strategic initiatives targeting the top actionable drivers.
+- "priority_matrix": A list of 3 to 5 structured objects:
+  [{"action": "Action description", "impact": "High"/"Medium"/"Low", "effort": "High"/"Medium"/"Low"}]
+- "risks": A list of 2 to 4 risks or caveats (e.g. correlation vs causation, data limitations, diminishing returns).
+- "error": null (or error message).
+- "components": A list of layout components:
+  [
+    {"type": "markdown", "content": "### Key Factors & Driver Analysis\nDetailed breakdown of factor importance and strategic implications."},
+    {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
+    {"type": "table", "headers": ["Factor / Attribute", "Impact Level", "Correlation / Score", "Actionability"], "rows": [["Factor Name", "High", "+0.72", "High"]]},
+    {"type": "chart", "plotly_spec": {}}
+  ]
+"""
+
 _DESCRIPTIVE_INSIGHT_PROMPT = """
 You are a senior data analyst and consultant. Your job is to translate descriptive statistics and data profiling results into a clear, jargon-free data health and completeness overview for a non-technical user.
 
 You must return ONLY a valid JSON object with exactly these eight keys:
-- "insight_text": A string summarizing the data health and key insights.
-- "key_metric": A short, clean string representing the overall scale of the data.
+- "insight_text": A string summarizing the data health, volume, and key patterns.
+- "key_metric": A short, clean string representing the overall scale or primary finding.
 - "follow_up_suggestions": A list of exactly 2 plain-English follow-up questions.
 - "strategies": A list of 3 to 5 specific, highly detailed strategic actions based on the data.
 - "priority_matrix": A list of 3 to 5 objects: [{"action": "Action description", "impact": "High"/"Medium"/"Low", "effort": "High"/"Medium"/"Low"}].
 - "risks": A list of 2 to 4 potential risks or data quality concerns.
 - "error": null (or error message).
-- "components": A list of layout components to render. Follow this structure:
+- "components": A list of layout components to render:
   [
-    {"type": "markdown", "content": "detailed markdown content"},
+    {"type": "markdown", "content": "### Data Health & Summary\nDetailed overview of dataset structure and distributions."},
     {"type": "metric_grid", "metrics": [{"label": "Metric Name", "value": "Metric Value"}]},
     {"type": "table", "headers": ["Col1", "Col2"], "rows": [["Val1", "Val2"]]},
     {"type": "chart", "plotly_spec": {}}
@@ -292,8 +412,12 @@ def _generate_insight_via_llm(
                 "model_metrics": prediction_data.get("model_metrics")
             }, indent=2) + "\n\n"
 
-    # Select system prompt dynamically based on the intent
-    if intent_type == "descriptive":
+    # Select system prompt dynamically based on the classified intent
+    if intent_type == "strategic_decision":
+        system_prompt = _STRATEGIC_INSIGHT_PROMPT.strip()
+    elif intent_type == "driver_attribution":
+        system_prompt = _DRIVER_INSIGHT_PROMPT.strip()
+    elif intent_type == "descriptive":
         system_prompt = _DESCRIPTIVE_INSIGHT_PROMPT.strip()
     elif intent_type == "conversational":
         system_prompt = _CONVERSATIONAL_INSIGHT_PROMPT.strip()
@@ -378,12 +502,27 @@ _PLANNER_SYSTEM_PROMPT = """You are a senior data science analytics planner. Giv
 Your goal is to guide a Python coder agent on how to compute the exact answer to the user query quickly and accurately.
 
 CRITICAL RULES:
-1. QUERY-INTENT ADAPTIVE SCOPE (DO NOT OVER-ENGINEER):
-   - Direct / Aggregation queries (e.g. "What is the average revenue?", "Top 5 products"): Plan a clean group-by aggregation and 1 primary chart.
-   - Diagnostic / Relationship queries (e.g. "Does income affect adoption?", "Correlation between X and Y"): Plan grouped statistical comparisons (mean, median, counts), a statistical test (correlation, ANOVA, or Chi-square), and 1 comparison chart.
+1. QUERY-INTENT ADAPTIVE SCOPE:
+   - Direct / Aggregation queries (e.g. "What is the average revenue?", "Top 5 products"):
+     Plan a clean group-by aggregation and 1 primary chart. Keep it concise (3-4 steps).
+   - Driver & Attribution queries (e.g. "Which factors highly affect [target]?", "Key drivers of churn"):
+     Plan:
+     1. Multi-feature correlation / ranking across candidate numeric & categorical columns against the target variable.
+        NOTE: For datasets > 10,000 rows, plan to sample up to 10,000 rows (`sample_df = df.sample(n=min(10000, len(df)), random_state=42)`) to ensure sub-second execution.
+     2. Identify top 5 positive and top 5 negative drivers.
+     3. Cross-tabulate or aggregate the target metric across top driver segments (e.g. high/medium/low tiers).
+     4. Specify 1 horizontal bar chart visualising driver impact/correlations.
+     5. Save ranked driver impact table in query_result.json.
+   - Strategic & Executive Decision queries (e.g. "Being the CEO, which city_type to shut down and why?", "Which market should we invest in?"):
+     Plan:
+     1. Multi-Criteria Decision Scorecard: compute a comprehensive comparison table across segments/categories, measuring at least 3-4 distinct dimensions (e.g. volume/headcount, adoption rate, average income/revenue, infrastructure/satisfaction).
+     2. Downside vs Upside Trade-off Evaluation: calculate percentage share and identify the worst-performing segment vs the growth engine.
+     3. Formulate an evidence-grounded recommendation backed by numbers.
+     4. Specify a comparative chart (e.g. grouped bar or multi-category bar chart).
+     5. Save the multi-criteria scorecard in query_result.json.
    - Predictive queries: Only plan machine learning (fit_regression_model, fit_classification_model, fit_kmeans_clustering) or forecasting (forecast_time_series) if the user explicitly asks to predict, forecast, classify, or cluster.
-   - Prescriptive queries: Only plan prescriptive strategies if the user asks for recommendations, next steps, or optimization.
-2. BREVITY: Keep the execution plan to 3-4 concise, direct steps. Do not plan unnecessary operations or complex custom models when basic statistics directly answer the question.
+2. EFFICIENCY & ROBUSTNESS:
+   Focus on high-leverage pandas/numpy operations. Always ensure column names and types exist in the schema.
 
 You MUST structure your plan using the following XML tags:
 <data_profile>
@@ -431,7 +570,10 @@ Pre-injected helper functions available in scope:
 - `forecast_time_series(df, time_col, metric_col)` -> dict
 
 CRITICAL CODING GUIDELINES:
-1. BREVITY & SPEED: Write concise, focused code (under 40-50 lines). Do NOT define custom helper functions or classes. Perform calculations directly on `df`.
+1. EFFICIENCY & PERFORMANCE SAFEGUARDS:
+   - For datasets > 10,000 rows requiring correlation matrices or feature importance across many columns, ALWAYS sample up to 10,000 rows for sub-second execution:
+     `sample_df = df.sample(n=min(10000, len(df)), random_state=42)`
+   - Write clean, vectorised pandas code (typically 30 to 90 lines). Do not cut corners or produce placeholder data ("Yes/No"). Always compute real, grounded metrics.
 2. NO HALLUCINATIONS: Do not call undefined functions. Use built-in Python/Pandas functions or the pre-injected helpers listed above.
 3. PANDAS SAFETY:
    - When calling `df.corr()`, ALWAYS use `df.corr(numeric_only=True)`.
@@ -489,6 +631,11 @@ def run_omega(
     shape_str = f"{dataframe.shape[0]} rows, {dataframe.shape[1]} columns"
     sample_str = dataframe.head(5).to_string()
 
+    # Step 2.2: Classify query context & complexity tier
+    query_profile = classify_query_intent(user_query, schema_str)
+    complexity_info = f"\nDetected Analytical Scope: {query_profile['complexity_tier']} (Intent: {query_profile['intent_type']})\n"
+    logger.info(f"Query classified — Tier={query_profile['complexity_tier']}, Intent={query_profile['intent_type']}")
+
     # Step 2.3: Load the persistent business model if it exists
     business_model_str = ""
     try:
@@ -514,7 +661,7 @@ def run_omega(
     logger.info(f"Planner Agent generating analytical plan with {PLANNER_MODEL}...")
     planner_messages = [
         {"role": "system", "content": _PLANNER_SYSTEM_PROMPT.strip()},
-        {"role": "user", "content": f"User Query: {user_query}\n\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Sample (first 5 rows):\n{sample_str}\n{bm_context}\n{history_context_str}"}
+        {"role": "user", "content": f"User Query: {user_query}\n{complexity_info}\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Sample (first 5 rows):\n{sample_str}\n{bm_context}\n{history_context_str}"}
     ]
     t_planner_start = time.time()
     try:
@@ -579,7 +726,7 @@ Execution Plan generated by Planner Agent:
 Please generate the Python code to perform this analysis and write the required json output files following the plan."""
 
     code = ""
-    max_attempts = 3
+    max_attempts = 2
     history = [
         {"role": "system", "content": _CODER_SYSTEM_PROMPT.strip()},
         {"role": "user", "content": coder_instruction}
@@ -643,13 +790,13 @@ Please generate the Python code to perform this analysis and write the required 
     prediction_data = _load_json_safely("prediction.json")
     
     # Infer intent type for system prompt selection
-    intent_type = "descriptive"
+    intent_type = query_profile.get("intent_type", "descriptive")
     if prediction_data and prediction_data.get("status") in ["regression", "classification", "clustering", "success"]:
-        intent_type = prediction_data.get("status")
-        if intent_type == "success":
-            intent_type = "forecast"
+        p_status = prediction_data.get("status")
+        intent_type = "forecast" if p_status == "success" else p_status
     elif "correlation" in user_query.lower() or "test" in user_query.lower():
-        intent_type = "correlation"
+        if intent_type == "descriptive":
+            intent_type = "correlation"
     
     t_insight_start = time.time()
     final_insight = _generate_insight_via_llm(
