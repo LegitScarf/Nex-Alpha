@@ -1,0 +1,64 @@
+name: Keep Omega Render Service Warm
+
+on:
+  schedule:
+    # Run every 12 minutes to keep the Render free-tier container warm (spins down after 15 min)
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+    inputs:
+      service_url:
+        description: 'Optional custom URL to ping (defaults to RENDER_OMEGA_URL secret or variable)'
+        required: false
+        default: ''
+
+jobs:
+  ping-render:
+    name: Ping Render Web Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Resolve Service URL
+        id: resolve-url
+        run: |
+          URL="${{ github.event.inputs.service_url }}"
+          if [ -z "$URL" ]; then
+            URL="${{ secrets.RENDER_OMEGA_URL }}"
+          fi
+          if [ -z "$URL" ]; then
+            URL="${{ vars.RENDER_OMEGA_URL }}"
+          fi
+          if [ -z "$URL" ]; then
+            echo "::error::Neither RENDER_OMEGA_URL secret/variable nor manual service_url input was provided."
+            echo "Please set RENDER_OMEGA_URL in your GitHub repository Secrets or Variables (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+          # Strip trailing slash if present
+          URL="${URL%/}"
+          echo "target_url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Ping Omega Health Endpoint
+        run: |
+          TARGET_URL="${{ steps.resolve-url.outputs.target_url }}"
+          HEALTH_URL="$TARGET_URL/health"
+          echo "Pinging: $HEALTH_URL"
+          
+          # Ping with up to 60s timeout in case the instance was cold
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$HEALTH_URL" || echo "000")
+          echo "Initial HTTP status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "Omega backend is warm and healthy."
+            exit 0
+          else
+            echo "Initial ping returned $HTTP_STATUS. Waiting 5s and retrying..."
+            sleep 5
+            RETRY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$HEALTH_URL" || echo "000")
+            echo "Retry HTTP status: $RETRY_STATUS"
+            if [ "$RETRY_STATUS" -eq 200 ]; then
+              echo "Omega backend successfully responded on retry."
+              exit 0
+            else
+              echo "::warning::Health check returned $RETRY_STATUS on retry."
+              exit 1
+            fi
+          fi

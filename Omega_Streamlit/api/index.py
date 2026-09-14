@@ -63,6 +63,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    """
+    Lightweight keep-warm endpoint for Render / Uptime monitors.
+    Returns HTTP 200 without requiring Clerk authentication or database lookups.
+    """
+    return {
+        "status": "healthy",
+        "service": "omega-api",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 # Clerk Configuration for user authentication validation
 jwks_cache = None
 
