@@ -4,7 +4,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Response
 from pydantic import BaseModel
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,8 +63,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
-@app.get("/api/health")
+@app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health_check():
     """
     Lightweight keep-warm endpoint for Render / Uptime monitors.
@@ -75,6 +76,11 @@ def health_check():
         "service": "omega-api",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
 
 
 # Clerk Configuration for user authentication validation
