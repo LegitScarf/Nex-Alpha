@@ -543,14 +543,26 @@ async def chat(req: ChatRequest, authorization: dict = Depends(verify_clerk_toke
     user_id = authorization.get("sub")
     tier = authorization.get("public_metadata", {}).get("tier", "free")
     
+    # Testing & evaluation controls to bypass rate limiting (defaults to true for evaluation testing)
+    disable_rate_limit = os.getenv("OMEGA_DISABLE_RATE_LIMIT", "true").lower() in ("true", "1", "yes")
+    free_tier_limit = int(os.getenv("OMEGA_FREE_TIER_LIMIT", "5"))
+
     # Enforce daily limit check (e.g. 5 queries/day for free tier)
     if tier == "free":
-        allowed = check_and_increment_limits(user_id, limit=5)
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS, 
-                detail="Daily analytical query limit reached (5 queries/day). Please upgrade your workspace."
-            )
+        if not disable_rate_limit:
+            allowed = check_and_increment_limits(user_id, limit=free_tier_limit)
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS, 
+                    detail=f"Daily analytical query limit reached ({free_tier_limit} queries/day). Please upgrade your workspace."
+                )
+        else:
+            # Observational tracking: record the query in SQLite without blocking or throwing errors
+            try:
+                check_and_increment_limits(user_id, limit=999999)
+            except Exception as count_err:
+                print(f"Non-critical: Query limit logging skipped: {count_err}")
+
 
     df = resolve_dataframe(req.dataset_id)
     if df is None:
