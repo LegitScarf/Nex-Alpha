@@ -17,7 +17,7 @@ from .tools import (
     run_hypothesis_test,
 )
 from .predictive import forecast_time_series, fit_regression_model, fit_classification_model, fit_kmeans_clustering
-from .schema import build_schema_string
+from .schema import build_schema_string, generate_safe_structural_profile
 from .utils import get_output_path, load_json_file
 
 logger = logging.getLogger("Omega.Crew")
@@ -424,8 +424,23 @@ def _generate_insight_via_llm(
     if query_data and query_data.get("status") != "skipped":
         context += "Executed SQL Query:\n"
         context += f"{query_data.get('sql_query')}\n\n"
-        context += "Query Results (first 10 rows shown):\n"
-        context += json.dumps(query_data.get("result_rows", [])[:10], indent=2) + "\n\n"
+        result_rows = query_data.get("result_rows", [])[:10]
+        # Preserve all business categories, dimensions, and numerical metrics while masking raw PII
+        sanitized_rows = []
+        pii_fields = ("email", "phone", "ssn", "social_security", "credit_card", "password")
+        for row in result_rows:
+            if isinstance(row, dict):
+                clean_row = {}
+                for k, v in row.items():
+                    if any(p in str(k).lower() for p in pii_fields):
+                        clean_row[k] = "[REDACTED_PII]"
+                    else:
+                        clean_row[k] = v
+                sanitized_rows.append(clean_row)
+            else:
+                sanitized_rows.append(row)
+        context += "Query Results (first 10 records shown):\n"
+        context += json.dumps(sanitized_rows, indent=2) + "\n\n"
         
     if chart_data and chart_data.get("status") != "skipped":
         context += "Visualisation Config:\n"
@@ -541,7 +556,7 @@ class MockTaskOutput:
 
 # Intents that need EDA (descripti# ── Public Entry Point ────────────────────────────────────────────────────────
 
-_PLANNER_SYSTEM_PROMPT = """You are a senior data science analytics planner. Given a user query, a dataset schema, sample rows, chat history, and business context, formulate a clear, focused, step-by-step statistical execution plan.
+_PLANNER_SYSTEM_PROMPT = """You are a senior data science analytics planner. Given a user query, a dataset schema, structural profile (data types, distributions, and format hints), chat history, and business context, formulate a clear, focused, step-by-step statistical execution plan.
 
 Your goal is to guide a Python coder agent on how to compute the exact answer to the user query quickly and accurately.
 
@@ -615,6 +630,7 @@ You have access to:
 Pre-injected helper functions available in scope:
 - `safe_float(v, default=0.0) -> float`: Safe float conversion that handles None, NaN, and strings without raising exceptions.
 - `safe_int(v, default=0) -> int`: Safe int conversion that handles None, NaN, and strings without raising exceptions.
+- `sample_for_analysis(df, max_rows=15000) -> pd.DataFrame`: Memory safety helper that samples down large DataFrames for heavy correlations or modeling.
 - `get_output_path(filename: str) -> str`: Returns the output path for writing files.
 - `write_output_json(filename: str, data: dict) -> None`: Writes a dictionary as JSON to disk.
 - `fit_regression_model(df, target_col, feature_cols)` -> dict
@@ -624,7 +640,7 @@ Pre-injected helper functions available in scope:
 
 CRITICAL CODING GUIDELINES:
 1. EFFICIENCY & PERFORMANCE SAFEGUARDS:
-   - For datasets > 10,000 rows requiring correlation matrices or feature importance across many columns, ALWAYS sample up to 10,000 rows for sub-second execution:
+   - For datasets > 10,000 rows requiring correlation matrices or feature importance across many columns, ALWAYS sample up to 10,000 rows (or use `sample_for_analysis(df, 10000)`) for sub-second execution:
      `sample_df = df.sample(n=min(10000, len(df)), random_state=42)`
    - Write clean, vectorised pandas code (typically 30 to 90 lines). Do not cut corners or produce placeholder data ("Yes/No"). Always compute real, grounded metrics.
 2. NO HALLUCINATIONS: Do not call undefined functions. Use built-in Python/Pandas functions or the pre-injected helpers listed above.
@@ -682,7 +698,7 @@ def run_omega(
     # Step 2: Build the dataframe context & schema
     schema_str = build_schema_string(dataframe)
     shape_str = f"{dataframe.shape[0]} rows, {dataframe.shape[1]} columns"
-    sample_str = dataframe.head(5).to_string()
+    safe_profile = generate_safe_structural_profile(dataframe)
 
     # Step 2.2: Classify query context & complexity tier
     query_profile = classify_query_intent(user_query, schema_str)
@@ -714,7 +730,7 @@ def run_omega(
     logger.info(f"Planner Agent generating analytical plan with {PLANNER_MODEL}...")
     planner_messages = [
         {"role": "system", "content": _PLANNER_SYSTEM_PROMPT.strip()},
-        {"role": "user", "content": f"User Query: {user_query}\n{complexity_info}\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Sample (first 5 rows):\n{sample_str}\n{bm_context}\n{history_context_str}"}
+        {"role": "user", "content": f"User Query: {user_query}\n{complexity_info}\nDataset Shape: {shape_str}\nDataset Schema:\n{schema_str}\nDataset Structural Profile (Zero-Sample Anonymized):\n{safe_profile}\n{bm_context}\n{history_context_str}"}
     ]
     t_planner_start = time.time()
     try:
@@ -779,8 +795,8 @@ Dataset metadata:
 - Schema (Optimized/Truncated to relevant columns):
 {coder_schema_str}
 
-Dataset Sample (first 5 rows):
-{sample_str}
+Dataset Structural Profile (Zero-Sample Anonymized):
+{safe_profile}
 
 Execution Plan generated by Planner Agent:
 {analytical_plan}

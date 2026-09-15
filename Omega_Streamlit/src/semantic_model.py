@@ -5,13 +5,13 @@ import pandas as pd
 import numpy as np
 from openai import OpenAI
 from typing import Dict, Any
-from .schema import build_schema_string
+from .schema import build_schema_string, generate_safe_structural_profile
 from .utils import get_output_path
 
 logger = logging.getLogger("Omega.SemanticModel")
 
 _BOOTSTRAP_SYSTEM_PROMPT = """
-You are a senior analytics consultant. Your job is to analyze a dataset's schema and sample data, and build a persistent "Semantic Business Model" representing the business domain, hierarchies, key KPIs, and relationships.
+You are a senior analytics consultant. Your job is to analyze a dataset's schema and safe structural profile, and build a persistent "Semantic Business Model" representing the business domain, hierarchies, key KPIs, and relationships.
 
 Your output will be used to guide future analytical queries and pre-populate an executive dashboard.
 
@@ -52,20 +52,20 @@ Rules:
 
 def bootstrap_business_model(df: pd.DataFrame) -> Dict[str, Any]:
     """
-    Analyzes the dataframe to build a persistent business model.
+    Analyzes the dataframe to build a persistent business model without exposing raw data rows.
     Saves the output to 'business_model.json'.
     """
-    logger.info("Starting Semantic Business Modeling...")
+    logger.info("Starting Semantic Business Modeling (Zero-Sample Hardened)...")
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     
     schema_str = build_schema_string(df)
-    sample_str = df.head(10).to_string()
+    structural_profile = generate_safe_structural_profile(df)
     shape_str = f"{df.shape[0]} rows, {df.shape[1]} columns"
     
     user_message = (
         f"Dataset shape: {shape_str}\n\n"
         f"Dataset schema:\n{schema_str}\n\n"
-        f"Dataset sample (first 10 rows):\n{sample_str}"
+        f"Dataset Structural Profile (Zero-Sample Anonymized):\n{structural_profile}"
     )
     
     try:

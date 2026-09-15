@@ -34,6 +34,8 @@ def get_effective_space_url() -> str:
     return ""
 
 def is_remote_configured() -> bool:
+    if os.getenv("OMEGA_DATA_PRIVACY_LEVEL", "enterprise").lower() == "enterprise":
+        return False
     return bool(get_effective_space_url())
 
 def _build_headers() -> dict:
@@ -64,6 +66,10 @@ def stage_dataset_remote(dataset_id: str, df: pd.DataFrame, timeout: float = 10.
     Pre-stages the dataset in the remote HF Space cache (/tmp/omega_datasets/{id}.parquet).
     Subsequent execution calls only pass dataset_id without re-uploading large data frames.
     """
+    if os.getenv("OMEGA_DATA_PRIVACY_LEVEL", "enterprise").lower() == "enterprise":
+        logger.info("Enterprise Data Privacy active: remote dataset staging bypassed.")
+        return False
+
     url = get_effective_space_url()
     if not url or df is None or df.empty:
         return False
@@ -111,6 +117,15 @@ def execute_remote_code(
         'remote': True
     }
     """
+    if os.getenv("OMEGA_DATA_PRIVACY_LEVEL", "enterprise").lower() == "enterprise":
+        logger.info("Enterprise Data Privacy active: remote code execution bypassed to keep data isolated on local host.")
+        return {
+            "success": False,
+            "error": "Enterprise privacy policy enforces local execution isolation.",
+            "artifacts": {},
+            "remote": False
+        }
+
     url = get_effective_space_url()
     if not url:
         return {

@@ -138,14 +138,24 @@ def _column_profile(col: str, series: pd.Series) -> Dict[str, Any]:
     n_null        = int(series.isna().sum())
     null_pct      = round(float(n_null / n_total * 100), 1) if n_total > 0 else 0.0
     n_unique      = int(series.nunique())
-    samples       = _safe_sample_values(series, n=3)
+
+    # Format idiom detection (zero raw row exposure)
+    format_warning = None
+    if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
+        non_null = series.dropna()
+        if len(non_null) > 0:
+            sample_str_vals = non_null.astype(str).head(30)
+            if sample_str_vals.str.contains(r"[$€£₹,]", regex=True).any():
+                format_warning = r"CONTAINS CURRENCY/COMMAS. Clean with .str.replace(r'[\$,]', '', regex=True).astype(float)"
+            elif sample_str_vals.str.contains(r"%", regex=False).any():
+                format_warning = "CONTAINS PERCENTAGES. Clean with .str.replace('%', '', regex=False).astype(float)"
 
     profile: Dict[str, Any] = {
-        "dtype":         dtype_str,
-        "semantic_type": semantic_type,
-        "null_pct":      null_pct,
-        "n_unique":      n_unique,
-        "sample_values": samples,
+        "dtype":          dtype_str,
+        "semantic_type":  semantic_type,
+        "null_pct":       null_pct,
+        "n_unique":       n_unique,
+        "format_warning": format_warning,
     }
 
     # Add numeric stats if applicable
@@ -156,8 +166,13 @@ def _column_profile(col: str, series: pd.Series) -> Dict[str, Any]:
             profile["max"]  = round(_coerce_float(numeric.max()), 4)
             profile["mean"] = round(_coerce_float(numeric.mean()), 4)
 
-    # Add top categories for low-cardinality columns
-    if semantic_type == "categorical_low_cardinality":
+    # Add top categories for low-cardinality non-PII business dimensions
+    col_lower = col.lower()
+    pii_signals = ("email", "mail", "phone", "mobile", "ssn", "social", "name", "first_name", "last_name", 
+                   "full_name", "customer_name", "client_name", "patient", "address", "street", "zip", 
+                   "postal", "password", "token", "secret", "user_id", "customer_id", "client_id", "account_id")
+    is_pii = any(sig in col_lower for sig in pii_signals)
+    if semantic_type == "categorical_low_cardinality" and not is_pii:
         top = series.value_counts().head(5)
         profile["top_categories"] = {
             str(k): int(v) for k, v in top.items()
@@ -263,48 +278,132 @@ def build_schema_string(df: pd.DataFrame) -> str:
     schema_dict = build_schema_dict(df)
 
     if not schema_dict["columns"]:
-        return "Schema: empty dataset — no columns found."
+        return "Schema: empty dataset -- no columns found."
 
     lines = [
-        f"Dataset: {schema_dict['row_count']:,} rows × {schema_dict['col_count']} columns",
+        f"Dataset: {schema_dict['row_count']:,} rows x {schema_dict['col_count']} columns",
         f"Numeric columns:     {schema_dict['numeric_columns']}",
         f"Categorical columns: {schema_dict['categorical_columns']}",
         f"Datetime columns:    {schema_dict['datetime_columns']}",
         "",
         "Column definitions:",
-        "─" * 60,
+        "-" * 60,
     ]
 
     for col, profile in schema_dict["columns"].items():
-        stype   = profile.get("semantic_type", "unknown")
-        dtype   = profile.get("dtype", "unknown")
+        stype    = profile.get("semantic_type", "unknown")
+        dtype    = profile.get("dtype", "unknown")
         null_pct = profile.get("null_pct", 0.0)
         n_unique = profile.get("n_unique", 0)
-        samples  = profile.get("sample_values", [])
 
-        # Base line
+        # Base line (Zero raw data row exposure)
         line = (
             f"  {col} | {stype} | dtype={dtype} | "
-            f"null%={null_pct}% | unique={n_unique} | "
-            f"samples={samples}"
+            f"null%={null_pct}% | unique={n_unique}"
         )
+
+        # Append format warning/clues if present
+        fmt = profile.get("format_warning")
+        if fmt:
+            line += f" | format_rule={fmt}"
 
         # Append numeric range
         if "min" in profile and "max" in profile:
-            line += f" | range=[{profile['min']} → {profile['max']}] | mean={profile['mean']}"
+            line += f" | range=[{profile['min']} -> {profile['max']}] | mean={profile['mean']}"
 
-        # Append top categories
+        # Append top categories (business vocabulary dimensions, e.g. Region or Category)
         if "top_categories" in profile:
             cats = list(profile["top_categories"].keys())
             line += f" | categories={cats}"
 
         lines.append(line)
 
-    lines.append("─" * 60)
+    lines.append("-" * 60)
     schema_str = "\n".join(lines)
 
-    logger.info(f"Schema string built — ~{len(schema_str)} chars")
+    logger.info(f"Schema string built -- ~{len(schema_str)} chars")
     return schema_str
+
+
+def generate_safe_structural_profile(df: pd.DataFrame) -> str:
+    """
+    Computes an anonymized schema fingerprint containing formatting clues,
+    value ranges, and categorical vocabulary WITHOUT revealing confidential row data.
+    Acts as a zero-sample drop-in replacement for df.head().
+    """
+    if df is None or df.empty:
+        return "Structural Profile: empty dataset — no columns found."
+
+    lines = [
+        f"Dataset: {len(df):,} rows x {len(df.columns)} columns (Zero-Sample Anonymized Structural Profile)",
+        "Column Specifications & Formatting Rules:",
+        "-" * 60,
+    ]
+
+    for col in df.columns:
+        s = df[col]
+        dtype = str(s.dtype)
+        n_null = int(s.isna().sum())
+        null_pct = round(float(n_null / len(df) * 100), 1) if len(df) > 0 else 0.0
+        n_unique = int(s.nunique())
+        
+        # 1. Detect String-Wrapped Currency / Numeric / Percentages
+        if pd.api.types.is_object_dtype(s.dtype) or pd.api.types.is_string_dtype(s.dtype):
+            sample_non_null = s.dropna().astype(str).head(30)
+            has_currency = sample_non_null.str.contains(r"[$€£₹,]", regex=True).any()
+            if has_currency:
+                lines.append(fr"  - Column '{col}' (type: {dtype}): CONTAINS CURRENCY/COMMAS. Clean with .str.replace(r'[\$,]', '', regex=True).astype(float) before any mathematical calculations.")
+                continue
+            has_percent = sample_non_null.str.contains(r"%", regex=False).any()
+            if has_percent:
+                lines.append(f"  - Column '{col}' (type: {dtype}): CONTAINS PERCENTAGES. Clean with .str.replace('%', '', regex=False).astype(float).")
+                continue
+
+        # 2. Date / Temporal Columns
+        if pd.api.types.is_datetime64_any_dtype(s) or "date" in col.lower() or "time" in col.lower() or "year" in col.lower():
+            if pd.api.types.is_datetime64_any_dtype(s):
+                lines.append(f"  - Column '{col}' (temporal datetime): Range [{s.min()} to {s.max()}], {null_pct}% nulls.")
+            else:
+                lines.append(f"  - Column '{col}' (temporal string): Parse with pd.to_datetime(df['{col}'], errors='coerce').")
+            continue
+
+        # 3. Numeric Columns
+        if pd.api.types.is_numeric_dtype(s):
+            num_clean = pd.to_numeric(s, errors="coerce").dropna()
+            if not num_clean.empty:
+                min_val = round(float(num_clean.min()), 2)
+                max_val = round(float(num_clean.max()), 2)
+                lines.append(f"  - Column '{col}' (numeric {dtype}): Range [{min_val} to {max_val}], {null_pct}% nulls.")
+            else:
+                lines.append(f"  - Column '{col}' (numeric {dtype}): {null_pct}% nulls.")
+            continue
+
+        # 4. Confidential Personal / Identifier Check
+        col_lower = col.lower()
+        pii_signals = ("email", "mail", "phone", "mobile", "ssn", "social", "name", "first_name", "last_name", 
+                       "full_name", "customer_name", "client_name", "patient", "address", "street", "zip", 
+                       "postal", "password", "token", "secret", "user_id", "customer_id", "client_id", "account_id")
+        is_pii_col = any(sig in col_lower for sig in pii_signals)
+        contains_email_char = False
+        if pd.api.types.is_object_dtype(s.dtype) or pd.api.types.is_string_dtype(s.dtype):
+            sample_non_null = s.dropna().astype(str).head(20)
+            if sample_non_null.str.contains("@", regex=False).any():
+                contains_email_char = True
+
+        if is_pii_col or contains_email_char:
+            lines.append(f"  - Column '{col}' (confidential identifier/PII, {n_unique} unique entries): Direct personal/account identifier. Anonymized -- raw values hidden. Query via aggregation or exact filter.")
+            continue
+
+        # 5. Categorical Business Dimensions
+        if n_unique <= 8:
+            valid_labels = [str(x) for x in s.dropna().unique().tolist()[:8]]
+            lines.append(f"  - Column '{col}' (categorical, {n_unique} levels): Valid categories = {valid_labels}")
+        else:
+            lines.append(f"  - Column '{col}' (categorical/text, {n_unique} unique values): High cardinality. Filter using .str.contains(..., case=False).")
+
+    lines.append("-" * 60)
+    return "\n".join(lines)
+
 
 
 def get_column_names(df: pd.DataFrame) -> List[str]:

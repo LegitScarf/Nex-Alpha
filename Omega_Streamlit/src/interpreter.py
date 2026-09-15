@@ -1,6 +1,7 @@
 import io
 import os
 import sys
+import gc
 import logging
 import traceback
 import contextlib
@@ -34,6 +35,7 @@ if not logger.handlers:
 
 # Sandbox execution modes: "remote" (HF Space only), "local" (host only), "hybrid" (remote with local fallback)
 SANDBOX_MODE = os.getenv("OMEGA_SANDBOX_MODE", "hybrid").lower()
+DATA_PRIVACY_LEVEL = os.getenv("OMEGA_DATA_PRIVACY_LEVEL", "enterprise").lower()
 
 
 def execute_code(
@@ -98,7 +100,12 @@ def execute_code(
             json.dump(safe_data, f, indent=2)
 
     # ── Tier 1: Remote Hugging Face ZeroGPU Sandbox ─────────────────────────────
-    if SANDBOX_MODE in ["remote", "hybrid"] and is_remote_configured():
+    can_use_remote = (
+        SANDBOX_MODE in ["remote", "hybrid"]
+        and DATA_PRIVACY_LEVEL != "enterprise"
+        and is_remote_configured()
+    )
+    if can_use_remote:
         logger.info(f"Attempting execution on Hugging Face Spaces ZeroGPU sandbox (Mode: {SANDBOX_MODE})...")
         effective_dataset_id = dataset_id or "default_dataset"
         
@@ -160,8 +167,15 @@ def execute_code(
         except Exception:
             return default
 
+    def sample_for_analysis(target_df: pd.DataFrame, max_rows: int = 15000, random_state: int = 42) -> pd.DataFrame:
+        """Safely downsample dataframe for heavy computations (e.g. correlation, ML) to protect host RAM."""
+        if target_df is not None and len(target_df) > max_rows:
+            return target_df.sample(n=max_rows, random_state=random_state)
+        return target_df
+
     # ── Tier 2: Fortified Local Execution Sandbox ──────────────────────────────
     logger.info("Executing in fortified local sandbox...")
+    gc.collect()
     exec_globals = {
         "df": df.copy(),
         "pd": pd,
@@ -180,6 +194,7 @@ def execute_code(
         "forecast_time_series": forecast_time_series,
         "safe_float": safe_float,
         "safe_int": safe_int,
+        "sample_for_analysis": sample_for_analysis,
     }
     exec_locals = {}
 
@@ -197,6 +212,11 @@ def execute_code(
         success = False
         tb = traceback.format_exc()
         error_message = f"{str(e)}\n\nTraceback:\n{tb}"
+    finally:
+        # Immediate memory reclamation for Render 512MB RAM environment
+        exec_globals.clear()
+        exec_locals.clear()
+        gc.collect()
 
     stdout_val = stdout_buffer.getvalue()
     stderr_val = stderr_buffer.getvalue()
@@ -206,6 +226,6 @@ def execute_code(
         "stdout": stdout_val,
         "stderr": stderr_val,
         "error": error_message,
-        "locals": exec_locals,
+        "locals": {},
         "remote": False
     }
