@@ -1,0 +1,275 @@
+
+/app/frontend/src/components/landing/Products.jsx
+
+
+
+Action: file_editor create /app/frontend/src/components/landing/Products.jsx --file-text "import { motion } from \"framer-motion\";
+import {
+  MessageSquareText,
+  Database,
+  LineChart,
+  Layers,
+  Sigma,
+  Wand2,
+} from \"lucide-react\";
+import { TID } from \"@/constants/testIds\";
+
+const cards = [
+  {
+    title: \"Natural Language Query\",
+    body: \"Ask in English. Get a chart, a table, or a story. Omega figures out the shape.\",
+    icon: MessageSquareText,
+    span: \"md:col-span-2 md:row-span-2\",
+    accent: \"#0047FF\",
+    visual: \"chat\",
+  },
+  {
+    title: \"1-Click Imports\",
+    body: \"CSV · Excel · SQL · Postgres · Sheets — dropped in, indexed in seconds.\",
+    icon: Database,
+    span: \"md:col-span-2\",
+    accent: \"#FF5E00\",
+    visual: \"chips\",
+  },
+  {
+    title: \"Real-time Charts\",
+    body: \"Live sparkline & bar visuals that update as your data streams in.\",
+    icon: LineChart,
+    span: \"md:col-span-2\",
+    accent: \"#0A0A0A\",
+    visual: \"spark\",
+  },
+  {
+    title: \"Statistical Layer\",
+    body: \"Regression, correlation, cohort splits — one prompt away.\",
+    icon: Sigma,
+    span: \"md:col-span-2\",
+    accent: \"#0047FF\",
+    visual: \"stats\",
+  },
+  {
+    title: \"Multi-modal Blending\",
+    body: \"Cross-reference across 12+ tables without ever writing a JOIN.\",
+    icon: Layers,
+    span: \"md:col-span-2\",
+    accent: \"#FF5E00\",
+    visual: \"layers\",
+  },
+];
+
+function Visual({ kind }) {
+  if (kind === \"chat\") {
+    return (
+      <div className=\"relative mt-6 rounded-2xl border border-black/5 bg-white/70 backdrop-blur p-4 space-y-2 font-mono text-[12px]\">
+        <div className=\"flex justify-end\">
+          <span className=\"rounded-2xl rounded-br-sm bg-[#0A0A0A] text-white px-3 py-1.5\">
+            top 3 regions by Q3 revenue?
+          </span>
+        </div>
+        <div className=\"flex\">
+          <span className=\"rounded-2xl rounded-bl-sm bg-zinc-100 text-zinc-800 px-3 py-1.5\">
+            APAC · $2.4M &nbsp; EMEA · $1.8M &nbsp; LATAM · $980K
+          </span>
+        </div>
+        <div className=\"flex justify-end\">
+          <span className=\"rounded-2xl rounded-br-sm bg-[#0A0A0A] text-white px-3 py-1.5\">
+            plot as bar chart, orange for peak
+          </span>
+        </div>
+        <div className=\"flex items-end gap-1.5 pt-2\">
+          {[42, 68, 90, 100, 74, 55].map((h, i) => (
+            <div
+              key={i}
+              style={{
+                height: `${h * 0.5}px`,
+                background: i === 3 ? \"#FF5E00\" : \"#0047FF\",
+              }}
+              className=\"w-4 rounded-t-sm\"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (kind === \"chips\") {
+    return (
+      <div className=\"mt-5 flex flex-wrap gap-2\">
+        {[\".csv\", \".xlsx\", \"SQL\", \"Postgres\", \"Sheets\", \".json\", \".parquet\"].map(
+          (c) => (
+            <span
+              key={c}
+              className=\"rounded-full border border-black/10 bg-white px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-700\"
+            >
+              {c}
+            </span>
+          )
+        )}
+      </div>
+    );
+  }
+  if (kind === \"spark\") {
+    return (
+      <svg
+        viewBox=\"0 0 240 60\"
+        className=\"mt-5 w-full h-20\"
+        preserveAspectRatio=\"none\"
+      >
+        <defs>
+          <linearGradient id=\"sg\" x1=\"0\" x2=\"0\" y1=\"0\" y2=\"1\">
+            <stop offset=\"0\" stopColor=\"#0047FF\" stopOpacity=\"0.35\" />
+            <stop offset=\"1\" stopColor=\"#0047FF\" stopOpacity=\"0\" />
+          </linearGradient>
+        </defs>
+        <path
+          d=\"M0,50 L20,42 L40,46 L60,30 L80,34 L100,20 L120,28 L140,14 L160,22 L180,10 L200,18 L220,6 L240,12 L240,60 L0,60 Z\"
+          fill=\"url(#sg)\"
+        />
+        <path
+          d=\"M0,50 L20,42 L40,46 L60,30 L80,34 L100,20 L120,28 L140,14 L160,22 L180,10 L200,18 L220,6 L240,12\"
+          fill=\"none\"
+          stroke=\"#0A0A0A\"
+          strokeWidth=\"2\"
+        />
+        <circle cx=\"220\" cy=\"6\" r=\"4\" fill=\"#FF5E00\" />
+      </svg>
+    );
+  }
+  if (kind === \"stats\") {
+    return (
+      <div className=\"mt-5 grid grid-cols-3 gap-2 font-mono text-[11px]\">
+        {[
+          { k: \"R²\", v: \"0.94\" },
+          { k: \"σ\", v: \"1.27\" },
+          { k: \"μ\", v: \"42.6\" },
+        ].map((s) => (
+          <div
+            key={s.k}
+            className=\"rounded-lg border border-black/10 bg-white p-2 text-center\"
+          >
+            <div className=\"text-zinc-500 uppercase tracking-widest\">{s.k}</div>
+            <div className=\"text-[#0A0A0A] font-semibold text-sm\">{s.v}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (kind === \"layers\") {
+    return (
+      <div className=\"mt-5 relative h-24\">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className=\"absolute inset-x-0 rounded-xl border border-black/10 bg-white\"
+            style={{
+              top: i * 10,
+              left: i * 10,
+              right: i * 10,
+              height: 48,
+              boxShadow: \"0 4px 14px rgba(0,0,0,0.04)\",
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
+export default function Products() {
+  return (
+    <section
+      id=\"products\"
+      data-testid={TID.productsSection}
+      className=\"relative py-24 md:py-32\"
+    >
+      <div className=\"max-w-7xl mx-auto px-6 md:px-8\">
+        {/* Header */}
+        <div className=\"max-w-3xl\">
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: \"-80px\" }}
+            transition={{ duration: 0.6 }}
+            className=\"font-mono text-[11px] uppercase tracking-[0.3em] text-zinc-500\"
+          >
+            [ 01 ] · Product
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: \"-80px\" }}
+            transition={{ duration: 0.7, delay: 0.05 }}
+            className=\"mt-4 font-display font-black tracking-tighter text-[#0A0A0A] text-4xl md:text-5xl lg:text-6xl leading-[0.95]\"
+          >
+            One tool. <br />
+            <span className=\"text-zinc-400\">Infinite leverage.</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: \"-80px\" }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className=\"mt-6 max-w-xl text-lg text-zinc-600 leading-relaxed\"
+          >
+            Omega is a decoupled intelligent framework built to automate analysis
+            and sharpen every business decision. Here's what's inside.
+          </motion.p>
+        </div>
+
+        {/* Bento grid */}
+        <div className=\"mt-16 grid grid-cols-1 md:grid-cols-4 auto-rows-[220px] gap-5\">
+          {cards.map((c, i) => {
+            const Icon = c.icon;
+            return (
+              <motion.article
+                key={c.title}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: \"-60px\" }}
+                transition={{
+                  duration: 0.7,
+                  ease: [0.19, 1, 0.22, 1],
+                  delay: i * 0.06,
+                }}
+                whileHover={{ y: -6 }}
+                className={`group relative overflow-hidden rounded-3xl border border-black/5 bg-white p-6 md:p-7 transition-shadow duration-300 hover:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.15)] ${c.span}`}
+              >
+                {/* corner accent */}
+                <div
+                  aria-hidden
+                  className=\"absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-[0.06] blur-2xl transition-opacity duration-500 group-hover:opacity-20\"
+                  style={{ background: c.accent }}
+                />
+
+                <div className=\"relative flex items-start justify-between\">
+                  <div
+                    className=\"inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white shadow-sm\"
+                    style={{ color: c.accent }}
+                  >
+                    <Icon size={18} strokeWidth={1.75} />
+                  </div>
+                  <span className=\"font-mono text-[10px] uppercase tracking-widest text-zinc-400\">
+                    0{i + 1}
+                  </span>
+                </div>
+
+                <h3 className=\"relative mt-4 font-display font-bold tracking-tight text-[#0A0A0A] text-xl md:text-2xl\">
+                  {c.title}
+                </h3>
+                <p className=\"relative mt-2 text-sm md:text-[15px] leading-relaxed text-zinc-600 max-w-md\">
+                  {c.body}
+                </p>
+
+                <div className=\"relative\">
+                  <Visual kind={c.visual} />
+                </div>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+"
+Observation: Create successful: /app/frontend/src/components/landing/Products.jsx

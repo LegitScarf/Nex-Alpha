@@ -1,0 +1,19 @@
+# Stage 1: Build dependency graph and compile static pages
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y3JlYXRpdmUtaGF3ay02NC5jbGVyay5hY2NvdW50cy5kZXYk
+ENV NEXT_PUBLIC_OMEGA_API_URL=http://localhost:8001/api
+RUN npm run build
+
+# Stage 2: Runtime runner image
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+EXPOSE 3001
+CMD ["npm", "start"]

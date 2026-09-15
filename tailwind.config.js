@@ -3,18 +3,12 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
-      colors: {
-        background: '#030014',
-        card: '#0a0524',
-        primary: '#6366f1',
-        secondary: '#a855f7',
-        accent: '#ec4899',
-      },
       fontFamily: {
-        sans: ['Outfit', 'sans-serif'],
+        display: ["var(--font-display)", "Cabinet Grotesk", "Satoshi", "sans-serif"],
+        body: ["var(--font-body)", "Satoshi", "Cabinet Grotesk", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
     },
   },

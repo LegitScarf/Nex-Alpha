@@ -152,10 +152,11 @@ def verify_clerk_token(authorization: str = Header(None)):
         )
 
 # Database / Product mapping
+OMEGA_APP_URL = os.getenv("OMEGA_APP_URL", "http://localhost:3001")
 PRODUCT_URLS = {
-    "omega": "https://omega-v2-nexalpha.streamlit.app/",
-    "optitrade": "https://optitrade-nexalpha.streamlit.app/",
+    "omega": OMEGA_APP_URL,
 }
+
 
 @app.get("/api")
 def root():
@@ -163,7 +164,7 @@ def root():
 
 @app.get("/api/launch")
 def launch_product(
-    product: str = Query(..., description="Product name (omega or optitrade)"),
+    product: str = Query(..., description="Product name (omega)"),
     authorization: str = Depends(verify_clerk_token)
 ):
     """

@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.venv/
+venv/
+env/
+__pycache__/
+*.db
+uploads/
+output/
+.git/
+.vscode/
+.gemini/

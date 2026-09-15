@@ -1,0 +1,20 @@
+// Data-test IDs for the Omega landing page
+export const TID = {
+  navLogo: "nav-logo",
+  navLaunchButton: "nav-launch-button",
+  navLinks: {
+    products: "nav-link-products",
+    pricing: "nav-link-pricing",
+    docs: "nav-link-docs",
+  },
+  heroCtaButton: "hero-cta-button",
+  heroSecondaryButton: "hero-secondary-button",
+  heroBadge: "hero-badge",
+  interactiveWidget: "interactive-widget-container",
+  widgetRestartButton: "widget-restart-button",
+  productsSection: "products-section",
+  pricingSection: "pricing-section",
+  pricingExplorerCta: "pricing-explorer-cta",
+  pricingAlphaProCta: "pricing-alpha-pro-cta",
+  footerLaunchButton: "footer-launch-button",
+};
