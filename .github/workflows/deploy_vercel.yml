@@ -1,4 +1,4 @@
-﻿name: Trigger Vercel Deployments on Push
+name: Trigger Vercel Deployment on Push
 
 on:
   push:
@@ -9,11 +9,6 @@ jobs:
   deploy-vercel:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger NexAlpha Omega Vercel Project
-        run: |
-          echo "Triggering NexAlpha Omega deployment..."
-          curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_54hwsc2kFj4i6dmTuShGjD1vUzWv/N6PDrie5CX"
-
       - name: Trigger NexAlpha Main Vercel Project
         run: |
           echo "Triggering NexAlpha Main deployment..."
